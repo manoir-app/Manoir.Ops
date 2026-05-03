@@ -48,8 +48,10 @@ jobs:
             $dockerTags = @('dev')
           }
 
+          $shouldPublish = [bool]($dockerTags.Count -gt 0)
+
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          "should_publish=$([bool]($dockerTags.Count -gt 0)).ToString().ToLowerInvariant()" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "should_publish=$($shouldPublish.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "docker_publish_tags=$($dockerTags -join ',')" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Restore
