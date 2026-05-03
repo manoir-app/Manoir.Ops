@@ -332,7 +332,21 @@ public static class PluginManifestParser
 		if (string.IsNullOrWhiteSpace(value))
 			return;
 
-		if (System.IO.Path.IsPathRooted(value))
+		if (IsAbsolutePath(value))
 			errors.Add(fieldName + " must be a relative path.");
+	}
+
+	private static bool IsAbsolutePath(string value)
+	{
+		if (System.IO.Path.IsPathRooted(value))
+			return true;
+
+		if (value.Length >= 2 && char.IsLetter(value[0]) && value[1] == ':')
+			return true;
+
+		if (value.StartsWith("\\\\", StringComparison.Ordinal) || value.StartsWith("//", StringComparison.Ordinal))
+			return true;
+
+		return false;
 	}
 }
