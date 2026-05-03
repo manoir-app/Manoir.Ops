@@ -3,7 +3,8 @@ param(
 	[string]$ImageName = "manoir-agents-gaia",
 	[string]$Tag = "local",
 	[ValidateSet("Debug", "Release")]
-	[string]$Configuration = "Release"
+	[string]$Configuration = "Release",
+	[string]$Platform
 )
 
 Set-StrictMode -Version 3.0
@@ -35,7 +36,19 @@ try {
 	}
 
 	Write-Host "Building '$imageReference' from '$dockerfilePath'."
-	& $dockerCommand.Source build --file $dockerfilePath --build-arg "CONFIGURATION=$Configuration" --tag $imageReference .
+	$dockerBuildArgs = @(
+		"build",
+		"--file", $dockerfilePath,
+		"--build-arg", "CONFIGURATION=$Configuration",
+		"--tag", $imageReference
+	)
+
+	if (-not [string]::IsNullOrWhiteSpace($Platform)) {
+		$dockerBuildArgs += @("--platform", $Platform.Trim())
+	}
+
+	$dockerBuildArgs += "."
+	& $dockerCommand.Source @dockerBuildArgs
 	if ($LASTEXITCODE -ne 0) {
 		throw "docker build failed with exit code $LASTEXITCODE."
 	}
@@ -45,3 +58,6 @@ finally {
 }
 
 Write-Host "Built image: $imageReference"
+if (-not [string]::IsNullOrWhiteSpace($Platform)) {
+	Write-Host "Platform: $($Platform.Trim())"
+}

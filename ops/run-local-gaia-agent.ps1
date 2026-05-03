@@ -59,7 +59,7 @@ function Resolve-DefaultHomeAutomationRootPath {
 	}
 
 	if ([string]::Equals($HostOperatingSystem, "linux", [System.StringComparison]::OrdinalIgnoreCase)) {
-		return "/home-automation"
+		return "/srv/manoir/home-automation"
 	}
 
 	throw "Unsupported host operating system '$HostOperatingSystem'."

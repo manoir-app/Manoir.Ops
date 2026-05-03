@@ -223,7 +223,7 @@ public static class DockerSharedServicesCatalog
 			return Path.Combine(programDataPath, "MaNoir", "home-automation");
 		}
 
-		return Path.Combine(Path.DirectorySeparatorChar.ToString(), "home-automation");
+		return Path.Combine(Path.DirectorySeparatorChar.ToString(), "srv", "manoir", "home-automation");
 	}
 
 	private static string TryGetParentPath(string path)

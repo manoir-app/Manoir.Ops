@@ -15,6 +15,9 @@ permissions:
 jobs:
   dotnet-ci:
     runs-on: ubuntu-latest
+    env:
+      GAIA_IMAGE_NAME: manoir-agents-gaia
+      GAIA_IMAGE_PLATFORMS: linux/amd64,linux/arm64
 
     steps:
       - name: Checkout
@@ -75,15 +78,30 @@ jobs:
             dotnet pack "$project" --configuration Release --no-build -o artifacts/nuget /p:Version=${{ steps.version.outputs.version }}
           done
 
-      - name: Build Gaia image
-        run: docker build --file apps/MaNoir.PlatformOps.AdminUi/Dockerfile --build-arg CONFIGURATION=Release --tag manoir-agents-gaia:ci .
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
 
-      - name: Archive Gaia image
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Gaia image artifacts
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts/docker
-          docker image save manoir-agents-gaia:ci | gzip -c > artifacts/docker/manoir-agents-gaia.tar.gz
+          IFS=',' read -ra platforms <<< "$GAIA_IMAGE_PLATFORMS"
+          for platform in "${platforms[@]}"; do
+            platform_suffix="${platform//\//-}"
+            image_tag="$GAIA_IMAGE_NAME:${platform_suffix}-ci"
+            docker buildx build \
+              --file apps/MaNoir.PlatformOps.AdminUi/Dockerfile \
+              --build-arg CONFIGURATION=Release \
+              --platform "$platform" \
+              --load \
+              --tag "$image_tag" \
+              .
+            docker image save "$image_tag" | gzip -c > "artifacts/docker/${GAIA_IMAGE_NAME}-${platform_suffix}.tar.gz"
+          done
 
       - name: Upload NuGet artifacts
         uses: actions/upload-artifact@v4
@@ -96,7 +114,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: manoir-agents-gaia-image-${{ github.run_number }}
-          path: artifacts/docker/manoir-agents-gaia.tar.gz
+          path: artifacts/docker/*.tar.gz
           if-no-files-found: error
 
       - name: Login to GHCR
@@ -109,11 +127,19 @@ jobs:
 
       - name: Publish Gaia image
         if: steps.version.outputs.should_publish == 'true'
-        shell: pwsh
+        shell: bash
         run: |
-          $tags = "${{ steps.version.outputs.docker_publish_tags }}".Split(',', [System.StringSplitOptions]::RemoveEmptyEntries)
-          foreach ($tag in $tags) {
-            $target = "ghcr.io/${{ github.repository_owner }}/manoir-agents-gaia:$tag"
-            docker tag manoir-agents-gaia:ci $target
-            docker push $target
-          }
+          set -euo pipefail
+          tag_args=()
+          IFS=',' read -ra tags <<< "${{ steps.version.outputs.docker_publish_tags }}"
+          for tag in "${tags[@]}"; do
+            tag_args+=(--tag "ghcr.io/${{ github.repository_owner }}/$GAIA_IMAGE_NAME:$tag")
+          done
+
+          docker buildx build \
+            --file apps/MaNoir.PlatformOps.AdminUi/Dockerfile \
+            --build-arg CONFIGURATION=Release \
+            --platform "$GAIA_IMAGE_PLATFORMS" \
+            --push \
+            "${tag_args[@]}" \
+            .
