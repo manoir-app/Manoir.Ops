@@ -17,6 +17,12 @@ The local build script also accepts an explicit Docker platform when needed, for
 - ./ops/build-local-gaia-image.ps1 -Platform linux/arm64
 - ./ops/build-local-gaia-image.ps1 -Platform linux/amd64
 
+MongoDB image selection is configurable for shared services:
+
+- default image: mongo:8
+- explicit override: pass MANOIR_MONGO_IMAGE to Gaia, or use ./ops/run-local-gaia-agent.ps1 -MongoImage <image>
+- for older Raspberry Pi generations, prefer documenting the required override in deployment configuration rather than changing the runtime default
+
 The local Gaia runner now maps a persistent home-automation root into the container:
 
 - Linux host: /srv/manoir/home-automation mounted to /home-automation;

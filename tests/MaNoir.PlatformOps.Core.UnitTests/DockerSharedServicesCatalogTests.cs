@@ -17,6 +17,7 @@ public sealed class DockerSharedServicesCatalogTests
 		string sharedServicesRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
 		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerSharedServicesCatalog.DevelopmentInstanceEnvironmentVariableName, null);
 		using EnvironmentVariableScope hostRootScope = new EnvironmentVariableScope(DockerSharedServicesCatalog.SharedServicesHostRootPathEnvironmentVariableName, null);
+		using EnvironmentVariableScope mongoImageScope = new EnvironmentVariableScope(DockerSharedServicesCatalog.MongoImageEnvironmentVariableName, null);
 
 		try
 		{
@@ -26,6 +27,7 @@ public sealed class DockerSharedServicesCatalogTests
 			Assert.AreEqual("shared-services", plan.DeploymentGroup);
 			Assert.AreEqual(4, plan.Services.Count);
 			CollectionAssert.AreEqual(new[] { "mongo", "nats", "mqtt", "redis" }, plan.Services.Select(service => service.Name).ToArray());
+			Assert.AreEqual(DockerSharedServicesCatalog.DefaultMongoImage, plan.Services[0].Image);
 			Assert.AreEqual("nats:2.14.0", plan.Services[1].Image);
 			Assert.AreEqual("eclipse-mosquitto:2", plan.Services[2].Image);
 			Assert.IsTrue(plan.Services.All(service => service.ImagePullPolicy == DockerImagePullPolicy.IfNotPresent));
@@ -47,6 +49,7 @@ public sealed class DockerSharedServicesCatalogTests
 		string sharedServicesRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
 		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerSharedServicesCatalog.DevelopmentInstanceEnvironmentVariableName, "true");
 		using EnvironmentVariableScope hostRootScope = new EnvironmentVariableScope(DockerSharedServicesCatalog.SharedServicesHostRootPathEnvironmentVariableName, null);
+		using EnvironmentVariableScope mongoImageScope = new EnvironmentVariableScope(DockerSharedServicesCatalog.MongoImageEnvironmentVariableName, null);
 
 		try
 		{
@@ -55,6 +58,27 @@ public sealed class DockerSharedServicesCatalogTests
 			CollectionAssert.AreEqual(new[] { "27017:27017" }, plan.Services.Single(service => service.Name == "mongo").Ports.ToArray());
 			CollectionAssert.AreEqual(new[] { "4222:4222" }, plan.Services.Single(service => service.Name == "nats").Ports.ToArray());
 			CollectionAssert.AreEqual(new[] { "1883:1883" }, plan.Services.Single(service => service.Name == "mqtt").Ports.ToArray());
+		}
+		finally
+		{
+			if (Directory.Exists(sharedServicesRootPath))
+				Directory.Delete(sharedServicesRootPath, true);
+		}
+	}
+
+	[TestMethod]
+	public void CreateDeploymentPlan_ShouldUseConfiguredMongoImageOverride()
+	{
+		string sharedServicesRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerSharedServicesCatalog.DevelopmentInstanceEnvironmentVariableName, null);
+		using EnvironmentVariableScope hostRootScope = new EnvironmentVariableScope(DockerSharedServicesCatalog.SharedServicesHostRootPathEnvironmentVariableName, null);
+		using EnvironmentVariableScope mongoImageScope = new EnvironmentVariableScope(DockerSharedServicesCatalog.MongoImageEnvironmentVariableName, "mongo:4.4.18");
+
+		try
+		{
+			DockerDeploymentPlan plan = DockerSharedServicesCatalog.CreateDeploymentPlan(sharedServicesRootPath);
+
+			Assert.AreEqual("mongo:4.4.18", plan.Services.Single(service => service.Name == "mongo").Image);
 		}
 		finally
 		{
@@ -106,12 +130,14 @@ public sealed class DockerSharedServicesCatalogTests
 	[TestMethod]
 	public void Evaluate_ShouldReportMissingAndRunningSharedServices()
 	{
+		using EnvironmentVariableScope mongoImageScope = new EnvironmentVariableScope(DockerSharedServicesCatalog.MongoImageEnvironmentVariableName, null);
+
 		ContainerListResponse[] containers =
 		[
 			new ContainerListResponse()
 			{
 				Names = ["/manoir-shared-mongo"],
-				Image = "mongo:8",
+				Image = DockerSharedServicesCatalog.DefaultMongoImage,
 				State = "running"
 			},
 			new ContainerListResponse()

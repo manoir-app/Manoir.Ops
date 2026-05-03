@@ -19,6 +19,10 @@ public static class DockerSharedServicesCatalog
 
 	public const string SharedServicesHostRootPathEnvironmentVariableName = "MANOIR_SHARED_SERVICES_HOST_ROOT_PATH";
 
+	public const string MongoImageEnvironmentVariableName = "MANOIR_MONGO_IMAGE";
+
+	public const string DefaultMongoImage = "mongo:8";
+
 	private static readonly string MosquittoConfigurationFileContent = "listener 1883 0.0.0.0\nallow_anonymous true\npersistence false\n";
 
 	public static DockerDeploymentPlan CreateDeploymentPlan(string sharedServicesRootPath, IEnumerable<string> serviceNames = null)
@@ -104,6 +108,7 @@ public static class DockerSharedServicesCatalog
 
 	private static IReadOnlyList<DockerDeploymentServicePlan> GetRequiredServiceDefinitions(string sharedServicesRootPath, bool isDevelopmentInstance)
 	{
+		string mongoImage = ResolveMongoImage();
 		string mqttRootPath = Path.Combine(sharedServicesRootPath, "mqtt");
 		string mqttConfigPath = Path.Combine(mqttRootPath, "config");
 		string mqttDataPath = Path.Combine(mqttRootPath, "data");
@@ -115,7 +120,7 @@ public static class DockerSharedServicesCatalog
 			{
 				Name = "mongo",
 				ContainerName = "manoir-shared-mongo",
-				Image = "mongo:8",
+				Image = mongoImage,
 				RestartPolicy = "unless-stopped",
 				ImagePullPolicy = DockerImagePullPolicy.IfNotPresent,
 				Ports = isDevelopmentInstance ? ["27017:27017"] : Array.Empty<string>(),
@@ -163,6 +168,15 @@ public static class DockerSharedServicesCatalog
 				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()
 			}
 		];
+	}
+
+	public static string ResolveMongoImage()
+	{
+		string configuredMongoImage = Environment.GetEnvironmentVariable(MongoImageEnvironmentVariableName);
+		if (!string.IsNullOrWhiteSpace(configuredMongoImage))
+			return configuredMongoImage.Trim();
+
+		return DefaultMongoImage;
 	}
 
 	private static DockerDeploymentServicePlan CloneServicePlan(DockerDeploymentServicePlan source)
