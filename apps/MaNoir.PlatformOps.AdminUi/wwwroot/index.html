@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MaNoir Ops</title>
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --panel: rgba(255, 251, 244, 0.86);
+      --panel-strong: #fffaf2;
+      --ink: #1f2933;
+      --muted: #66737f;
+      --accent: #b64926;
+      --accent-dark: #8f3518;
+      --line: rgba(31, 41, 51, 0.12);
+      --good: #24613a;
+      --warn: #a36b16;
+      --bad: #9b2c2c;
+      --shadow: 0 24px 80px rgba(77, 55, 33, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(182, 73, 38, 0.18), transparent 22%),
+        radial-gradient(circle at right 10% top 20%, rgba(33, 78, 102, 0.12), transparent 18%),
+        linear-gradient(180deg, #f8f3eb 0%, var(--bg) 100%);
+      min-height: 100vh;
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 32px 20px 48px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: 1.2fr 0.8fr;
+      align-items: stretch;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--panel);
+      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-main {
+      padding: 28px;
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: "Aptos Display", "Bahnschrift", sans-serif;
+      font-size: clamp(34px, 4vw, 58px);
+      line-height: 0.95;
+      letter-spacing: -0.05em;
+    }
+
+    .lead {
+      margin: 18px 0 0;
+      max-width: 58ch;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    .hero-side {
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+      align-content: start;
+      background: linear-gradient(160deg, rgba(182, 73, 38, 0.08), rgba(255,255,255,0.6));
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.7);
+      width: fit-content;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); }
+    .dot.ok { background: var(--good); }
+    .dot.bad { background: var(--bad); }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 140ms ease, background 140ms ease, opacity 140ms ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.55; cursor: wait; transform: none; }
+
+    .btn-primary { background: var(--accent); color: #fff9f1; }
+    .btn-primary:hover { background: var(--accent-dark); }
+    .btn-secondary { background: rgba(31, 41, 51, 0.08); color: var(--ink); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .panel { padding: 22px; }
+    .span-4 { grid-column: span 4; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 18px;
+      letter-spacing: -0.03em;
+    }
+
+    .stats {
+      display: grid;
+      gap: 12px;
+    }
+
+    .stat {
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .service-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .service {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+    }
+
+    .service h3 {
+      margin: 0 0 6px;
+      font-size: 16px;
+    }
+
+    .service-meta {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .badge {
+      align-self: start;
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(36, 97, 58, 0.12);
+      color: var(--good);
+    }
+
+    .badge.warn { background: rgba(163, 107, 22, 0.14); color: var(--warn); }
+    .badge.bad { background: rgba(155, 44, 44, 0.14); color: var(--bad); }
+
+    .list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .mono {
+      font-family: "IBM Plex Mono", "Cascadia Mono", monospace;
+      font-size: 13px;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    @media (max-width: 900px) {
+      .hero, .grid { grid-template-columns: 1fr; }
+      .span-4, .span-8, .span-12 { grid-column: span 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <article class="card hero-main">
+        <div class="eyebrow">MaNoir PlatformOps</div>
+        <h1>Ops Admin UI<br>pilotée par Gaia</h1>
+        <p class="lead">
+          Cette console locale supervise le runtime Docker, contrôle le first-run, et maintient le minimum vital PlatformOps sans sortir du périmètre Ops.
+        </p>
+        <div class="actions">
+          <button id="refreshButton" class="btn-secondary">Rafraîchir l'état</button>
+          <button id="ensureButton" class="btn-primary">Assurer le minimum vital</button>
+          <button id="refreshPluginsButton" class="btn-secondary">Refresh & restart all plugins</button>
+        </div>
+      </article>
+      <aside class="card hero-side">
+        <div class="status-pill"><span id="runtimeDot" class="dot"></span><span id="runtimeText">Chargement...</span></div>
+        <div>
+          <div class="stat-label">Dernière inspection</div>
+          <div id="lastInspection" class="mono">-</div>
+        </div>
+        <div>
+          <div class="stat-label">Dernier ensure Gaia</div>
+          <div id="lastEnsure" class="mono">-</div>
+        </div>
+        <div>
+          <div class="stat-label">Chemin shared services</div>
+          <div id="sharedRoot" class="mono">-</div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="grid">
+      <article class="card panel span-4">
+        <h2>Diagnostic</h2>
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">Docker</div>
+            <div id="dockerState" class="stat-value">-</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Version Docker</div>
+            <div id="dockerVersion" class="stat-value">-</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Variables runtime</div>
+            <div id="environmentState" class="stat-value">-</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card panel span-8">
+        <h2>Minimum vital</h2>
+        <div id="serviceList" class="service-list"></div>
+      </article>
+
+      <article class="card panel span-6">
+        <h2>Variables requises</h2>
+        <ul id="environmentErrors" class="list"></ul>
+      </article>
+
+      <article class="card panel span-6">
+        <h2>Journal Gaia</h2>
+        <ul id="gaiaLog" class="list"></ul>
+      </article>
+    </section>
+  </div>
+
+  <script>
+    const refreshButton = document.getElementById('refreshButton');
+    const ensureButton = document.getElementById('ensureButton');
+    const refreshPluginsButton = document.getElementById('refreshPluginsButton');
+    const runtimeDot = document.getElementById('runtimeDot');
+    const runtimeText = document.getElementById('runtimeText');
+    const lastInspection = document.getElementById('lastInspection');
+    const lastEnsure = document.getElementById('lastEnsure');
+    const sharedRoot = document.getElementById('sharedRoot');
+    const dockerState = document.getElementById('dockerState');
+    const dockerVersion = document.getElementById('dockerVersion');
+    const environmentState = document.getElementById('environmentState');
+    const environmentErrors = document.getElementById('environmentErrors');
+    const serviceList = document.getElementById('serviceList');
+    const gaiaLog = document.getElementById('gaiaLog');
+
+    async function callApi(url, method) {
+      const response = await fetch(url, { method });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || 'La requête a échoué.');
+      }
+
+      return response.json();
+    }
+
+    function formatDate(value) {
+      if (!value) return '-';
+      return new Date(value).toLocaleString('fr-FR');
+    }
+
+    function setBusy(isBusy) {
+      refreshButton.disabled = isBusy;
+      ensureButton.disabled = isBusy;
+      refreshPluginsButton.disabled = isBusy;
+    }
+
+    function renderState(state) {
+      const status = state?.lastStatus;
+      const dockerOk = !!status?.isDockerAvailable;
+      const envOk = (status?.environmentErrors?.length || 0) === 0;
+      const vitalOk = !!status?.hasMinimumVital;
+
+      runtimeDot.className = 'dot ' + (vitalOk ? 'ok' : dockerOk ? '' : 'bad');
+      runtimeText.textContent = vitalOk
+        ? 'Minimum vital prêt'
+        : dockerOk
+          ? 'Gaia surveille un runtime incomplet'
+          : 'Docker indisponible';
+
+      lastInspection.textContent = formatDate(state?.lastInspectionUtc);
+      lastEnsure.textContent = formatDate(state?.lastEnsureUtc);
+      sharedRoot.textContent = state?.options?.sharedServicesRootPath || '(par défaut)';
+
+      dockerState.textContent = dockerOk ? 'Accessible' : 'Indisponible';
+      dockerVersion.textContent = status?.dockerServerVersion || status?.dockerError || '-';
+      environmentState.textContent = envOk ? 'Prêt' : 'Incomplet';
+
+      environmentErrors.innerHTML = '';
+      if (!status?.environmentErrors?.length) {
+        environmentErrors.innerHTML = '<li class="empty">Aucune erreur d\'environnement détectée.</li>';
+      } else {
+        status.environmentErrors.forEach(error => {
+          const item = document.createElement('li');
+          item.textContent = error;
+          environmentErrors.appendChild(item);
+        });
+      }
+
+      serviceList.innerHTML = '';
+      const groupedServices = [];
+      (status?.coreServices || []).forEach(service => groupedServices.push({ service, group: 'core' }));
+      (status?.sharedServices || []).forEach(service => groupedServices.push({ service, group: 'shared-services' }));
+
+      groupedServices.forEach(({ service, group }) => {
+        const badgeClass = service.isRunning && service.matchesExpectedImage ? 'badge' : service.isPresent ? 'badge warn' : 'badge bad';
+        const badgeText = service.isRunning && service.matchesExpectedImage ? 'OK' : service.isPresent ? 'À converger' : 'Manquant';
+
+        const card = document.createElement('article');
+        card.className = 'service';
+        card.innerHTML = `
+          <div>
+            <h3>${service.serviceName}</h3>
+            <div class="service-meta mono">Groupe: ${group}</div>
+            <div class="service-meta mono">Container: ${service.containerName}</div>
+            <div class="service-meta mono">Image attendue: ${service.expectedImage}</div>
+            <div class="service-meta mono">Image courante: ${service.currentImage || '-'}</div>
+          </div>
+          <div class="${badgeClass}">${badgeText}</div>`;
+        serviceList.appendChild(card);
+      });
+
+      gaiaLog.innerHTML = '';
+      const logLines = [];
+      if (state?.lastError) logLines.push(state.lastError);
+      if (status?.deployedSharedServices?.length) logLines.push('Shared services déployés: ' + status.deployedSharedServices.join(', '));
+      if (status?.deployedCoreServices?.length) logLines.push('Core déployé: ' + status.deployedCoreServices.join(', '));
+      if (status?.deployedPlugins?.length) logLines.push('Plugins redéployés: ' + status.deployedPlugins.join(', '));
+      (status?.operationErrors || []).forEach(error => logLines.push(error));
+      (status?.operationMessages || []).forEach(message => logLines.push(message));
+      if (!logLines.length) logLines.push('Gaia n\'a remonté aucune erreur récente.');
+
+      logLines.forEach(line => {
+        const item = document.createElement('li');
+        item.textContent = line;
+        gaiaLog.appendChild(item);
+      });
+    }
+
+    async function refreshState() {
+      setBusy(true);
+      try {
+        const state = await callApi('/api/ops/gaia/state', 'GET');
+        renderState(state);
+      } catch (error) {
+        gaiaLog.innerHTML = '<li>' + error.message + '</li>';
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function ensureSharedServices() {
+      setBusy(true);
+      try {
+        const state = await callApi('/api/ops/gaia/ensure-minimum-vital', 'POST');
+        renderState(state);
+      } catch (error) {
+        gaiaLog.innerHTML = '<li>' + error.message + '</li>';
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function refreshAndRestartAllPlugins() {
+    setBusy(true);
+    try {
+      const state = await callApi('/api/ops/gaia/refresh-and-restart-all-plugins', 'POST');
+      renderState(state);
+    } catch (error) {
+      gaiaLog.innerHTML = '<li>' + error.message + '</li>';
+    } finally {
+      setBusy(false);
+    }
+  }
+
+    refreshButton.addEventListener('click', refreshState);
+    ensureButton.addEventListener('click', ensureSharedServices);
+    refreshPluginsButton.addEventListener('click', refreshAndRestartAllPlugins);
+    refreshState();
+  </script>
+</body>
+</html>

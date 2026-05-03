@@ -1,0 +1,9 @@
+.git/
+.github/
+**/bin/
+**/obj/
+.vs/
+artifacts/
+TestResults/
+node_modules/
+ops/local/

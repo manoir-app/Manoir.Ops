@@ -1,0 +1,117 @@
+name: build
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  dotnet-ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Compute version
+        id: version
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content "eng/Versions.props"
+          $baseVersion = $props.Project.PropertyGroup.MaNoirVersionPrefix
+          $parts = $baseVersion.Split('.', [System.StringSplitOptions]::RemoveEmptyEntries)
+
+          if ($parts.Length -lt 2) {
+            throw "MaNoirVersionPrefix must contain at least major.minor. Current value: $baseVersion"
+          }
+
+          $parts[$parts.Length - 1] = "$env:GITHUB_RUN_NUMBER"
+          $version = [string]::Join('.', $parts)
+
+          $dockerTags = @()
+          if ($env:GITHUB_EVENT_NAME -eq 'push' -and $env:GITHUB_REF_NAME -eq 'main') {
+            $dockerTags = @('latest', $version)
+          }
+          elseif ($env:GITHUB_EVENT_NAME -eq 'push' -and $env:GITHUB_REF_NAME -eq 'dev') {
+            $dockerTags = @('dev')
+          }
+
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "should_publish=$([bool]($dockerTags.Count -gt 0)).ToString().ToLowerInvariant()" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "docker_publish_tags=$($dockerTags -join ',')" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Restore
+        run: dotnet restore MaNoir.PlatformOps.sln
+
+      - name: Build
+        run: dotnet build MaNoir.PlatformOps.sln --configuration Release --no-restore /p:Version=${{ steps.version.outputs.version }}
+
+      - name: Run unit tests
+        run: dotnet test tests/MaNoir.PlatformOps.Core.UnitTests/MaNoir.PlatformOps.Core.UnitTests.csproj --configuration Release --no-build
+
+      - name: Run functional tests
+        run: dotnet test tests/MaNoir.PlatformOps.Core.FunctionalTests/MaNoir.PlatformOps.Core.FunctionalTests.csproj --configuration Release --no-build
+
+      - name: Pack NuGet packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/nuget
+          for project in packages/*/*.csproj; do
+            dotnet pack "$project" --configuration Release --no-build -o artifacts/nuget /p:Version=${{ steps.version.outputs.version }}
+          done
+
+      - name: Build Gaia image
+        run: docker build --file apps/MaNoir.PlatformOps.AdminUi/Dockerfile --build-arg CONFIGURATION=Release --tag manoir-agents-gaia:ci .
+
+      - name: Archive Gaia image
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/docker
+          docker image save manoir-agents-gaia:ci | gzip -c > artifacts/docker/manoir-agents-gaia.tar.gz
+
+      - name: Upload NuGet artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages-${{ steps.version.outputs.version }}
+          path: artifacts/nuget
+          if-no-files-found: error
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: manoir-agents-gaia-image-${{ github.run_number }}
+          path: artifacts/docker/manoir-agents-gaia.tar.gz
+          if-no-files-found: error
+
+      - name: Login to GHCR
+        if: steps.version.outputs.should_publish == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Gaia image
+        if: steps.version.outputs.should_publish == 'true'
+        shell: pwsh
+        run: |
+          $tags = "${{ steps.version.outputs.docker_publish_tags }}".Split(',', [System.StringSplitOptions]::RemoveEmptyEntries)
+          foreach ($tag in $tags) {
+            $target = "ghcr.io/${{ github.repository_owner }}/manoir-agents-gaia:$tag"
+            docker tag manoir-agents-gaia:ci $target
+            docker push $target
+          }

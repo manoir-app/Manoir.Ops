@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <RootNamespace>MaNoir.PlatformOps.Provider.Docker</RootNamespace>
+    <AssemblyName>MaNoir.PlatformOps.Provider.Docker</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MaNoir.PlatformOps.Core\MaNoir.PlatformOps.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Docker.DotNet" Version="3.125.15" />
+    <PackageReference Include="YamlDotNet" Version="17.1.0" />
+  </ItemGroup>
+</Project>

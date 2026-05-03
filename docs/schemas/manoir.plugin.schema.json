@@ -1,0 +1,420 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://manoir.app/schemas/manoir.plugin.schema.json",
+  "title": "MaNoir Plugin Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "plugin"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "manoir/v1"
+    },
+    "kind": {
+      "const": "PluginManifest"
+    },
+    "plugin": {
+      "$ref": "#/$defs/plugin"
+    },
+    "documentation": {
+      "$ref": "#/$defs/documentation"
+    },
+    "dependencies": {
+      "$ref": "#/$defs/dependencies"
+    },
+    "catalog": {
+      "$ref": "#/$defs/catalog"
+    },
+    "deployment": {
+      "$ref": "#/$defs/deployment"
+    }
+  },
+  "$defs": {
+    "localizedText": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[a-z]{2}-[A-Z]{2}$": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "localizedPath": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[a-z]{2}-[A-Z]{2}$": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?![A-Za-z]:)(?!/)(?!\\\\).+"
+        }
+      }
+    },
+    "plugin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pluginId",
+        "repoUrl",
+        "displayName",
+        "publisher",
+        "version",
+        "minimumMaNoirVersion"
+      ],
+      "properties": {
+        "pluginId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repoUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "publisher": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "minimumMaNoirVersion": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "documentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "overviewPath": {
+          "$ref": "#/$defs/localizedPath"
+        },
+        "setupPath": {
+          "$ref": "#/$defs/localizedPath"
+        }
+      }
+    },
+    "requiredPlugin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pluginId",
+        "repoUrl",
+        "minVersion",
+        "optional"
+      ],
+      "properties": {
+        "pluginId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repoUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://"
+        },
+        "minVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "optional": {
+          "type": "boolean"
+        },
+        "reason": {
+          "$ref": "#/$defs/localizedText"
+        }
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requiredPlugins": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/requiredPlugin"
+          }
+        }
+      }
+    },
+    "accessZone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "description": {
+          "$ref": "#/$defs/localizedText"
+        }
+      }
+    },
+    "adminUiPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "name",
+        "url",
+        "labels"
+      ],
+      "properties": {
+        "category": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "labels": {
+          "$ref": "#/$defs/localizedText"
+        }
+      }
+    },
+    "adminUiContribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "domain",
+        "accessZoneId",
+        "requiredAccessLevel",
+        "pages"
+      ],
+      "properties": {
+        "domain": {
+          "type": "string",
+          "minLength": 1
+        },
+        "accessZoneId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requiredAccessLevel": {
+          "enum": [
+            "Read",
+            "Write",
+            "Admin"
+          ]
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/adminUiPage"
+          }
+        }
+      }
+    },
+    "publishedEntityKind": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "descriptions"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "descriptions": {
+          "$ref": "#/$defs/localizedText"
+        }
+      }
+    },
+    "integrationContribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "domain",
+        "category",
+        "serviceDependencyKind"
+      ],
+      "properties": {
+        "domain": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1
+        },
+        "serviceDependencyKind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requiresExternalSubscription": {
+          "type": "boolean"
+        },
+        "documentationUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://"
+        },
+        "publishedEntityKinds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/publishedEntityKind"
+          }
+        }
+      }
+    },
+    "contribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "label"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "AdminUiPage",
+            "Integration"
+          ]
+        },
+        "label": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "description": {
+          "$ref": "#/$defs/localizedText"
+        },
+        "canCreateInstances": {
+          "type": "boolean"
+        },
+        "canInstallMultipleTimes": {
+          "type": "boolean"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "adminUi": {
+          "$ref": "#/$defs/adminUiContribution"
+        },
+        "integration": {
+          "$ref": "#/$defs/integrationContribution"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "AdminUiPage"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "adminUi"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "Integration"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "integration"
+            ]
+          }
+        }
+      ]
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "accessZones": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/accessZone"
+          }
+        },
+        "contributions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/contribution"
+          }
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "compose",
+            "env-template"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?![A-Za-z]:)(?!/)(?!\\\\).+"
+        }
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "group": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact"
+          }
+        }
+      }
+    }
+  }
+}
