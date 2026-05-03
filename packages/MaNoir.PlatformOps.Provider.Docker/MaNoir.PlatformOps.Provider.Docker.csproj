@@ -11,6 +11,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Docker.DotNet" Version="3.125.15" />
+    <PackageReference Include="MaNoir.Core.Contracts" Version="0.1.38" />
     <PackageReference Include="YamlDotNet" Version="17.1.0" />
   </ItemGroup>
 </Project>

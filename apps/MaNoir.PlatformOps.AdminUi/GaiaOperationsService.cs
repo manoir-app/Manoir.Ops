@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using MaNoir.Core.Contracts.Models.Mesh;
 using Microsoft.Extensions.Logging;
 using MaNoir.PlatformOps.Core;
 using MaNoir.PlatformOps.Provider.Docker;
@@ -15,6 +17,7 @@ public sealed class GaiaOperationsService
 	private readonly GaiaOptions _options;
 	private readonly ILogger<GaiaOperationsService> _logger;
 	private readonly SemaphoreSlim _gate = new SemaphoreSlim(1, 1);
+	private readonly HttpClient _httpClient = new HttpClient();
 	private DockerFirstRunStatus _lastStatus;
 	private DateTimeOffset? _lastInspectionUtc;
 	private DateTimeOffset? _lastEnsureUtc;
@@ -75,6 +78,11 @@ public sealed class GaiaOperationsService
 			_logger.LogInformation("Gaia ensure cycle started.");
 			using DockerFirstRunBootstrapper bootstrapper = new DockerFirstRunBootstrapper(_options.SharedServicesRootPath);
 			DockerFirstRunStatus status = await bootstrapper.EnsureMinimumVitalAsync(cancellationToken);
+			List<string> operationMessages = new List<string>(status.OperationMessages ?? Array.Empty<string>());
+			List<string> operationErrors = new List<string>(status.OperationErrors ?? Array.Empty<string>());
+			await EnsureEdgeCertificateAsync(operationMessages, operationErrors, cancellationToken);
+			status.OperationMessages = operationMessages;
+			status.OperationErrors = operationErrors;
 			ApplyStatus(status, isEnsureOperation: true);
 
 			if (status.OperationMessages.Count > 0)
@@ -183,6 +191,64 @@ public sealed class GaiaOperationsService
 		finally
 		{
 			_gate.Release();
+		}
+	}
+
+	private async Task EnsureEdgeCertificateAsync(List<string> operationMessages, List<string> operationErrors, CancellationToken cancellationToken)
+	{
+		GaiaEdgeCertificateRuntimeConfiguration edgeCertificate = await GaiaEdgeCertificateRuntimeResolver.ResolveAsync(cancellationToken);
+		if (!edgeCertificate.IsEnabled)
+			return;
+
+		if (string.IsNullOrWhiteSpace(edgeCertificate.AccountEmail))
+		{
+			operationErrors.Add("The edge certificate account email is required when edge certificate convergence is enabled. Configure " + GaiaEdgeCertificateRuntimeResolver.AccountEmailEnvironmentVariableName + ".");
+			return;
+		}
+
+		try
+		{
+			using DockerLocalCoreMeshSettingsClient meshSettingsClient = new DockerLocalCoreMeshSettingsClient(_httpClient);
+			AutomationMeshLocalSettings meshSettings = await meshSettingsClient.GetLocalSettingsAsync(cancellationToken: cancellationToken);
+			if (meshSettings == null)
+			{
+				operationMessages.Add("No local Core mesh settings are available yet for edge certificate convergence.");
+				return;
+			}
+
+			if (string.IsNullOrWhiteSpace(meshSettings.PublicBaseDomain))
+			{
+				operationMessages.Add("No mesh public base domain is configured. Edge certificate convergence was skipped.");
+				return;
+			}
+
+			using DockerTraefikCertificateOrchestrator certificateOrchestrator = new DockerTraefikCertificateOrchestrator(_options.SharedServicesRootPath);
+			DockerTraefikCertificateDeploymentResult result = await certificateOrchestrator.EnsureCurrentAsync(
+				new DockerTraefikCertificateConfiguration()
+				{
+					DomainName = meshSettings.PublicBaseDomain,
+					UseWildcard = edgeCertificate.UseWildcard,
+					AccountEmail = edgeCertificate.AccountEmail,
+					AcmeServerUri = edgeCertificate.AcmeServerUri,
+					OrganizationUnit = edgeCertificate.OrganizationUnit,
+					OvhDns = new OvhDnsChallengeSecretConfiguration()
+					{
+						ZoneName = string.IsNullOrWhiteSpace(edgeCertificate.DnsZoneNameOverride) ? meshSettings.PublicBaseDomain : edgeCertificate.DnsZoneNameOverride
+					}
+				},
+				cancellationToken);
+
+			if (result.Certificate?.WasRenewed == true)
+				operationMessages.Add("The edge certificate was renewed for '" + meshSettings.PublicBaseDomain + "'.");
+			else
+				operationMessages.Add("The edge certificate is already current for '" + meshSettings.PublicBaseDomain + "'.");
+
+			if (result.ReloadAttempted && !result.ReloadPerformed)
+				operationErrors.Add("The edge certificate changed but the Traefik container '" + result.ReloadedContainerName + "' could not be reloaded automatically.");
+		}
+		catch (Exception exception)
+		{
+			operationErrors.Add("The edge certificate convergence failed: " + exception.Message);
 		}
 	}
 

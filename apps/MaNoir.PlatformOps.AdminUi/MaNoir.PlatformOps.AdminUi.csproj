@@ -10,4 +10,8 @@
     <ProjectReference Include="..\..\packages\MaNoir.PlatformOps.Core\MaNoir.PlatformOps.Core.csproj" />
     <ProjectReference Include="..\..\packages\MaNoir.PlatformOps.Provider.Docker\MaNoir.PlatformOps.Provider.Docker.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MaNoir.Core" Version="0.1.38" />
+    <PackageReference Include="MaNoir.Core.Contracts" Version="0.1.38" />
+  </ItemGroup>
 </Project>

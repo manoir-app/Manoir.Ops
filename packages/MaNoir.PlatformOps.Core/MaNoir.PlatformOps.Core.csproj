@@ -7,8 +7,9 @@
     <AssemblyName>MaNoir.PlatformOps.Core</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="MaNoir.Core" Version="*" />
-    <PackageReference Include="MaNoir.Core.Contracts" Version="*" />
+    <PackageReference Include="Certes" Version="3.0.4" />
+    <PackageReference Include="MaNoir.Core" Version="0.1.38" />
+    <PackageReference Include="MaNoir.Core.Contracts" Version="0.1.38" />
     <PackageReference Include="YamlDotNet" Version="17.1.0" />
   </ItemGroup>
 </Project>
