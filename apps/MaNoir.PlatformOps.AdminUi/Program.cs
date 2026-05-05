@@ -25,7 +25,13 @@ app.MapPost("/api/ops/gaia/inspect", async (GaiaOperationsService gaia, Cancella
 app.MapPost("/api/ops/gaia/ensure-minimum-vital", async (GaiaOperationsService gaia, CancellationToken cancellationToken) => Results.Ok(await gaia.EnsureMinimumVitalAsync(cancellationToken)));
 app.MapPost("/api/ops/gaia/ensure-shared-services", async (GaiaOperationsService gaia, CancellationToken cancellationToken) => Results.Ok(await gaia.EnsureSharedServicesAsync(cancellationToken)));
 app.MapPost("/api/ops/gaia/refresh-and-restart-all-plugins", async (GaiaOperationsService gaia, CancellationToken cancellationToken) => Results.Ok(await gaia.RefreshAndRestartAllPluginsAsync(cancellationToken)));
+app.MapPost("/api/ops/gaia/reset-shared-services", async (GaiaOperationsService gaia, ResetSharedServicesRequest request, CancellationToken cancellationToken) => Results.Ok(await gaia.ResetSharedServicesAsync(request?.WipeData == true, cancellationToken)));
 
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+public sealed class ResetSharedServicesRequest
+{
+	public bool WipeData { get; set; }
+}

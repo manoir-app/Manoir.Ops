@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Docker.DotNet;
@@ -131,6 +132,81 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 		return refreshedStatus;
 	}
 
+	public async Task<DockerFirstRunStatus> ResetSharedServicesAsync(bool wipeData = false, CancellationToken cancellationToken = default)
+	{
+		DockerFirstRunStatus inspectStatus = await InspectAsync(cancellationToken);
+		if (!inspectStatus.IsDockerAvailable)
+			return inspectStatus;
+
+		List<string> operationMessages = new List<string>();
+		List<string> operationErrors = new List<string>();
+		List<string> removedContainers = new List<string>();
+		List<string> removedVolumes = new List<string>();
+
+		IList<ContainerListResponse> containers = await _dockerClient.Containers.ListContainersAsync(new ContainersListParameters() { All = true }, cancellationToken);
+
+		foreach (DockerSharedServiceStatus service in inspectStatus.SharedServices)
+		{
+			if (service == null)
+				continue;
+
+			ContainerListResponse container = containers.FirstOrDefault(candidate => ContainerHasName(candidate, service.ContainerName));
+			if (container != null)
+			{
+				operationMessages.Add("Removing container '" + service.ContainerName + "'.");
+				try
+				{
+					await _dockerClient.Containers.RemoveContainerAsync(container.ID, new ContainerRemoveParameters() { Force = true, RemoveVolumes = false }, cancellationToken);
+					removedContainers.Add(service.ContainerName);
+					operationMessages.Add("Container '" + service.ContainerName + "' removed.");
+				}
+				catch (Exception exception)
+				{
+					operationErrors.Add("Container '" + service.ContainerName + "' could not be removed: " + exception.Message);
+				}
+			}
+			else
+			{
+				operationMessages.Add("Container '" + service.ContainerName + "' was not present.");
+			}
+		}
+
+		if (wipeData)
+		{
+			foreach (string volumeName in DockerSharedServicesCatalog.GetDataVolumeNames())
+			{
+				operationMessages.Add("Removing data volume '" + volumeName + "'.");
+				try
+				{
+					await _dockerClient.Volumes.RemoveAsync(volumeName, false, cancellationToken);
+					removedVolumes.Add(volumeName);
+					operationMessages.Add("Data volume '" + volumeName + "' removed.");
+				}
+				catch (DockerApiException apiException) when (apiException.StatusCode == HttpStatusCode.NotFound)
+				{
+					operationMessages.Add("Data volume '" + volumeName + "' was not present.");
+				}
+				catch (Exception exception)
+				{
+					operationErrors.Add("Data volume '" + volumeName + "' could not be removed: " + exception.Message);
+				}
+			}
+		}
+
+		DockerFirstRunStatus redeployStatus = await EnsureMinimumVitalAsync(cancellationToken);
+
+		List<string> allMessages = new List<string>(operationMessages);
+		allMessages.AddRange(redeployStatus.OperationMessages ?? Array.Empty<string>());
+		List<string> allErrors = new List<string>(operationErrors);
+		allErrors.AddRange(redeployStatus.OperationErrors ?? Array.Empty<string>());
+
+		redeployStatus.RemovedSharedServices = removedContainers;
+		redeployStatus.RemovedDataVolumes = removedVolumes;
+		redeployStatus.OperationMessages = allMessages;
+		redeployStatus.OperationErrors = allErrors;
+		return redeployStatus;
+	}
+
 	public void Dispose()
 	{
 		_dockerClient?.Dispose();
@@ -210,5 +286,11 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 			return (imageReference.Substring(0, lastColonIndex), imageReference.Substring(lastColonIndex + 1));
 
 		return (imageReference, "latest");
+	}
+
+	private static bool ContainerHasName(ContainerListResponse container, string containerName)
+	{
+		return container?.Names != null
+			&& container.Names.Any(name => string.Equals(name?.TrimStart('/'), containerName, StringComparison.OrdinalIgnoreCase));
 	}
 }

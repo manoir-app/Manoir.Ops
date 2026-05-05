@@ -12,6 +12,28 @@ namespace MaNoir.PlatformOps.Core.UnitTests;
 public sealed class DockerSharedServicesCatalogTests
 {
 	[TestMethod]
+	public void GetDataVolumeNames_ShouldReturnNamedDataVolumesForSharedServices()
+	{
+		IReadOnlyList<string> volumeNames = DockerSharedServicesCatalog.GetDataVolumeNames();
+
+		Assert.AreEqual(2, volumeNames.Count);
+		CollectionAssert.Contains(volumeNames.ToArray(), "manoir-shared-mongo");
+		CollectionAssert.Contains(volumeNames.ToArray(), "manoir-shared-redis");
+	}
+
+	[TestMethod]
+	public void GetDataVolumeNames_ShouldNotContainBindMountSources()
+	{
+		IReadOnlyList<string> volumeNames = DockerSharedServicesCatalog.GetDataVolumeNames();
+
+		foreach (string volumeName in volumeNames)
+		{
+			Assert.IsFalse(volumeName.Contains('/'), "Volume name should not be a path: " + volumeName);
+			Assert.IsFalse(volumeName.Contains('\\'), "Volume name should not be a path: " + volumeName);
+		}
+	}
+
+	[TestMethod]
 	public void CreateDeploymentPlan_ShouldProjectRequiredSharedServicesAndMosquittoConfig()
 	{
 		string sharedServicesRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));

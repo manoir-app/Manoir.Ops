@@ -75,6 +75,11 @@ public static class DockerSharedServicesCatalog
 		return statuses;
 	}
 
+	public static IReadOnlyList<string> GetDataVolumeNames()
+	{
+		return ["manoir-shared-mongo", "manoir-shared-redis"];
+	}
+
 	public static string ResolveSharedServicesRootPath(string sharedServicesRootPath)
 	{
 		if (!string.IsNullOrWhiteSpace(sharedServicesRootPath))
