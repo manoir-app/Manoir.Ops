@@ -24,6 +24,10 @@ public sealed class DockerFirstRunStatus
 
 	public IReadOnlyList<string> DeployedPlugins { get; set; } = Array.Empty<string>();
 
+	public IReadOnlyList<string> RemovedSharedServices { get; set; } = Array.Empty<string>();
+
+	public IReadOnlyList<string> RemovedDataVolumes { get; set; } = Array.Empty<string>();
+
 	public IReadOnlyList<string> OperationErrors { get; set; } = Array.Empty<string>();
 
 	public IReadOnlyList<string> OperationMessages { get; set; } = Array.Empty<string>();

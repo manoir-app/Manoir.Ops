@@ -109,6 +109,42 @@ public sealed class GaiaOperationsService
 		}
 	}
 
+	public async Task<GaiaDashboardState> ResetSharedServicesAsync(bool wipeData = false, CancellationToken cancellationToken = default)
+	{
+		await _gate.WaitAsync(cancellationToken);
+		try
+		{
+			_logger.LogWarning("Gaia shared services reset started. WipeData={WipeData}.", wipeData);
+			using DockerFirstRunBootstrapper bootstrapper = new DockerFirstRunBootstrapper(_options.SharedServicesRootPath);
+			DockerFirstRunStatus status = await bootstrapper.ResetSharedServicesAsync(wipeData, cancellationToken);
+			ApplyStatus(status, isEnsureOperation: true);
+
+			foreach (string operationMessage in status.OperationMessages)
+				_logger.LogInformation("{OperationMessage}", operationMessage);
+
+			foreach (string operationError in status.OperationErrors)
+				_logger.LogWarning("{OperationError}", operationError);
+
+			_logger.LogWarning(
+				"Gaia shared services reset completed. RemovedSharedServices={RemovedSharedServices}, RemovedDataVolumes={RemovedDataVolumes}, HasMinimumVital={HasMinimumVital}, OperationErrors={OperationErrors}.",
+				status.RemovedSharedServices.Count,
+				status.RemovedDataVolumes.Count,
+				status.HasMinimumVital,
+				status.OperationErrors.Count);
+			return CreateSnapshot();
+		}
+		catch (Exception exception)
+		{
+			_lastError = exception.Message;
+			_logger.LogError(exception, "Gaia could not reset the shared services.");
+			throw;
+		}
+		finally
+		{
+			_gate.Release();
+		}
+	}
+
 	public async Task<GaiaDashboardState> RefreshAndRestartAllPluginsAsync(CancellationToken cancellationToken = default)
 	{
 		await _gate.WaitAsync(cancellationToken);
