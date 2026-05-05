@@ -341,7 +341,7 @@ public static class PluginManifestParser
 		if (System.IO.Path.IsPathRooted(value))
 			return true;
 
-		if (value.Length >= 2 && char.IsLetter(value[0]) && value[1] == ':')
+		if (value.Length >= 3 && char.IsAsciiLetter(value[0]) && value[1] == ':' && (value[2] == '/' || value[2] == '\\'))
 			return true;
 
 		if (value.StartsWith("\\\\", StringComparison.Ordinal) || value.StartsWith("//", StringComparison.Ordinal))
