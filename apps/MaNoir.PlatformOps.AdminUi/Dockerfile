@@ -1,5 +1,6 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG CONFIGURATION=Release
+ARG TARGETARCH
 WORKDIR /src
 
 COPY ["NuGet.config", "."]
@@ -10,10 +11,10 @@ COPY ["packages/MaNoir.PlatformOps.Core/MaNoir.PlatformOps.Core.csproj", "packag
 COPY ["packages/MaNoir.PlatformOps.Provider.Docker/MaNoir.PlatformOps.Provider.Docker.csproj", "packages/MaNoir.PlatformOps.Provider.Docker/"]
 COPY ["packages/MaNoir.PlatformOps.Provider.Kubernetes/MaNoir.PlatformOps.Provider.Kubernetes.csproj", "packages/MaNoir.PlatformOps.Provider.Kubernetes/"]
 
-RUN dotnet restore "apps/MaNoir.PlatformOps.AdminUi/MaNoir.PlatformOps.AdminUi.csproj"
+RUN dotnet restore "apps/MaNoir.PlatformOps.AdminUi/MaNoir.PlatformOps.AdminUi.csproj" -a $TARGETARCH
 
 COPY . .
-RUN dotnet publish "apps/MaNoir.PlatformOps.AdminUi/MaNoir.PlatformOps.AdminUi.csproj" --configuration "$CONFIGURATION" --no-restore -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "apps/MaNoir.PlatformOps.AdminUi/MaNoir.PlatformOps.AdminUi.csproj" --configuration "$CONFIGURATION" --no-restore -a $TARGETARCH -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
