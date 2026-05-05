@@ -8,6 +8,7 @@ param(
 	[string]$ApiKey,
 	[string]$SecretsSaltBase64,
 	[string]$AuthJwtSigningKey,
+	[string]$MongoImage,
 	[string]$SharedServicesRootPath,
 	[string]$DockerSocketSource,
 	[int]$EnsureIntervalSeconds = 300,
@@ -59,7 +60,7 @@ function Resolve-DefaultHomeAutomationRootPath {
 	}
 
 	if ([string]::Equals($HostOperatingSystem, "linux", [System.StringComparison]::OrdinalIgnoreCase)) {
-		return "/home-automation"
+		return "/srv/manoir/home-automation"
 	}
 
 	throw "Unsupported host operating system '$HostOperatingSystem'."
@@ -140,6 +141,7 @@ $dockerArgs = @(
 	"--env", "HOMEAUTOMATION_SECRETS_SALT=$SecretsSaltBase64",
 	"--env", "HOMEAUTOMATION_AUTH_JWT_SIGNING_KEY=$AuthJwtSigningKey",
 	"--env", "MANOIR_CORE_ADMINUI_HOST_PORT=$CoreAdminUiHostPort",
+	"--env", "MANOIR_MONGO_IMAGE=$MongoImage",
 	"--env", "MANOIR_SHARED_SERVICES_HOST_ROOT_PATH=$resolvedSharedServicesRootPath",
 	"--env", "Gaia__SharedServicesRootPath=$sharedServicesContainerPath",
 	"--env", "Gaia__PluginRepositoriesRootPath=$pluginRepositoriesContainerPath",
@@ -172,6 +174,7 @@ Write-Host "HOMEAUTOMATION_APIKEY=$ApiKey"
 Write-Host "HOMEAUTOMATION_SECRETS_SALT=$SecretsSaltBase64"
 Write-Host "HOMEAUTOMATION_AUTH_JWT_SIGNING_KEY length=$($AuthJwtSigningKey.Length)"
 Write-Host "MANOIR_CORE_ADMINUI_HOST_PORT=$CoreAdminUiHostPort"
+Write-Host "MANOIR_MONGO_IMAGE=$MongoImage"
 Write-Host "MANOIR_SHARED_SERVICES_HOST_ROOT_PATH=$resolvedSharedServicesRootPath"
 Write-Host "Home automation root: $resolvedHomeAutomationRootPath"
 Write-Host "Shared services root: $resolvedSharedServicesRootPath"
