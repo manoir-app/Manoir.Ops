@@ -52,7 +52,7 @@ public sealed class DockerSharedServicesCatalogTests
 			Assert.AreEqual(DockerSharedServicesCatalog.DefaultMongoImage, plan.Services[0].Image);
 			Assert.AreEqual("nats:2.14.0", plan.Services[1].Image);
 			Assert.AreEqual("eclipse-mosquitto:2", plan.Services[2].Image);
-			Assert.IsTrue(plan.Services.All(service => service.ImagePullPolicy == DockerImagePullPolicy.IfNotPresent));
+			Assert.IsTrue(plan.Services.All(service => service.ImagePullPolicy == DockerImagePullPolicy.Always));
 			CollectionAssert.AreEqual(new[] { "1883:1883" }, plan.Services[2].Ports.ToArray());
 			Assert.AreEqual(0, plan.Services[0].Ports.Count);
 			Assert.AreEqual(0, plan.Services[1].Ports.Count);

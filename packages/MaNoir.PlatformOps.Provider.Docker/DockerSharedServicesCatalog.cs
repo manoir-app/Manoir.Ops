@@ -127,7 +127,7 @@ public static class DockerSharedServicesCatalog
 				ContainerName = "manoir-shared-mongo",
 				Image = mongoImage,
 				RestartPolicy = "unless-stopped",
-				ImagePullPolicy = DockerImagePullPolicy.IfNotPresent,
+				ImagePullPolicy = DockerImagePullPolicy.Always,
 				Ports = isDevelopmentInstance ? ["27017:27017"] : Array.Empty<string>(),
 				Volumes = ["manoir-shared-mongo:/data/db"],
 				Environment = Array.Empty<DockerComposeEnvironmentEntry>(),
@@ -139,7 +139,7 @@ public static class DockerSharedServicesCatalog
 				ContainerName = "manoir-shared-nats",
 				Image = "nats:2.14.0",
 				RestartPolicy = "unless-stopped",
-				ImagePullPolicy = DockerImagePullPolicy.IfNotPresent,
+				ImagePullPolicy = DockerImagePullPolicy.Always,
 				Ports = isDevelopmentInstance ? ["4222:4222"] : Array.Empty<string>(),
 				Environment = Array.Empty<DockerComposeEnvironmentEntry>(),
 				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()
@@ -150,7 +150,7 @@ public static class DockerSharedServicesCatalog
 				ContainerName = "manoir-shared-mqtt",
 				Image = "eclipse-mosquitto:2",
 				RestartPolicy = "unless-stopped",
-				ImagePullPolicy = DockerImagePullPolicy.IfNotPresent,
+				ImagePullPolicy = DockerImagePullPolicy.Always,
 				Ports = ["1883:1883"],
 				Volumes =
 				[
@@ -167,7 +167,7 @@ public static class DockerSharedServicesCatalog
 				ContainerName = "manoir-shared-redis",
 				Image = "redis:7.4",
 				RestartPolicy = "unless-stopped",
-				ImagePullPolicy = DockerImagePullPolicy.IfNotPresent,
+				ImagePullPolicy = DockerImagePullPolicy.Always,
 				Volumes = ["manoir-shared-redis:/data"],
 				Environment = Array.Empty<DockerComposeEnvironmentEntry>(),
 				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()

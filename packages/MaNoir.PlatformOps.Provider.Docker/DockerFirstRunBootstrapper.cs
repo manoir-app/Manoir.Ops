@@ -72,7 +72,7 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 		List<string> operationErrors = new List<string>();
 		List<string> deployedSharedServices = new List<string>();
 		List<string> deployedCoreServices = new List<string>();
-		await RefreshMutableImagesAsync(status.SharedServices, "shared service", shouldPullAlways: false, operationMessages, operationErrors, cancellationToken);
+		await RefreshMutableImagesAsync(status.SharedServices, "shared service", shouldPullAlways: true, operationMessages, operationErrors, cancellationToken);
 		await RefreshMutableImagesAsync(status.CoreServices, "core service", shouldPullAlways: true, operationMessages, operationErrors, cancellationToken);
 
 		string[] servicesToDeploy = status.SharedServices
