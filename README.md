@@ -1,20 +1,20 @@
 # MaNoir.PlatformOps
 
-Ce repository porte la famille Platform Operations de MaNoir.
+This repository hosts the MaNoir Platform Operations family.
 
-Il a vocation a heberger les composants de deploiement, de convergence runtime, de control plane, et plus generalement de pilotage technique de la plateforme. Il ne doit pas devenir un nouveau Core transverse ni un domaine metier masque.
+Its purpose is to contain deployment, runtime convergence, control plane, and more generally the technical operating components of the platform. It must not become a second transverse Core or a hidden business domain.
 
-## Role du repository
+## Repository Role
 
-Ce repo est destine a contenir principalement :
+This repository is primarily intended to contain:
 
-- le noyau applicatif de PlatformOps ;
-- les contrats publics de control plane quand ils doivent etre consommes depuis d'autres repos ;
-- les providers techniques lies aux cibles d'execution ;
-- une API de pilotage si une surface distante est necessaire ;
-- une interface d'exploitation si un back-office ops apparait.
+- the PlatformOps application core;
+- public control-plane contracts when they need to be consumed from other repositories;
+- technical providers tied to execution targets;
+- an operations API when a remote surface is required;
+- an operations UI if a human-facing back office becomes necessary.
 
-Exemples de projets cibles :
+Examples of target projects:
 
 - packages/MaNoir.PlatformOps.Core
 - packages/MaNoir.PlatformOps.Contracts
@@ -24,44 +24,44 @@ Exemples de projets cibles :
 - apps/MaNoir.PlatformOps.AdminUi
 - ui/MaNoir.PlatformOps.AdminUi
 
-## Ce que ce repository ne doit pas devenir
+## What This Repository Must Not Become
 
-Ce repo ne doit pas absorber :
+This repository must not absorb:
 
-- la logique metier des grands domaines ;
-- les primitives transverses generales du Core ;
-- les dashboards et experiences front composees ;
-- la correlation et le routage des signaux externes du Communication Hub ;
-- des agents transverses qui n'ont pas pour role premier le pilotage de l'execution de la plateforme.
+- business logic from the main domains;
+- general transverse Core primitives;
+- composed frontend dashboards and experiences;
+- correlation and routing of external signals from the Communication Hub;
+- transverse agents whose primary role is not to operate platform execution.
 
-Si un besoin n'agit ni sur le deploiement, ni sur la convergence, ni sur le runtime, il doit probablement vivre ailleurs.
+If a need does not act on deployment, convergence, or runtime, it probably belongs elsewhere.
 
-## Principes directeurs
+## Guiding Principles
 
-Les regles structurantes de MaNoir V2 sont les suivantes :
+The structuring rules for MaNoir V2 are the following:
 
-1. PlatformOps pilote l'execution de la plateforme, pas sa verite metier.
-2. Le Core reste proprietaire des primitives transverses generales.
-3. Les domaines restent proprietaires de leur verite metier.
-4. Les agents orchestrent, mais ne deviennent pas source de verite technique canonique.
-5. Les interfaces d'exploitation pilotent via des surfaces publiques, sans acceder aux implementations internes des autres familles.
-6. Les providers d'execution restent separables par cible technique.
+1. PlatformOps operates platform execution, not business truth.
+2. The Core remains the owner of general transverse primitives.
+3. Domains remain the owners of their business truth.
+4. Agents orchestrate, but must not become the canonical source of technical truth.
+5. Operations interfaces drive the platform through public surfaces without reaching into internal implementations from other families.
+6. Execution providers must remain separable by technical target.
 
 ## Packaging
 
-La strategie cible est le multirepo avec packages NuGet prives.
+The target strategy is a multi-repository setup with private NuGet packages.
 
-Dans ce cadre :
+Within that strategy:
 
-- le projet Contracts est publiable quand des surfaces de control plane doivent etre partagees ;
-- un projet Client n'est a introduire que s'il existe plusieurs consommateurs reels ;
-- les providers et implementations runtime restent internes par defaut ;
-- l'API et l'AdminUi restent internes au repo ;
-- on evite de publier des packages d'implementation lourds par simple commodite.
+- the Contracts project is publishable when control-plane surfaces must be shared;
+- a Client project should only be introduced when multiple real consumers exist;
+- providers and runtime implementations stay internal by default;
+- the API and AdminUi stay internal to the repository;
+- heavy implementation packages should not be published just for convenience.
 
 ## Repository Layout
 
-La structure racine recommandee pour les repos MaNoir est la suivante :
+The recommended root structure for MaNoir repositories is the following:
 
 ```text
 /
@@ -75,47 +75,47 @@ La structure racine recommandee pour les repos MaNoir est la suivante :
 	ops/
 ```
 
-Regles de base :
+Basic rules:
 
-- les applications executables vivent sous `apps/` ;
-- les librairies et packages vivent sous `packages/` ;
-- les SPA et frontends web vivent sous `ui/` ;
-- les tests vivent sous `tests/` ;
-- les artefacts d'exploitation vivent sous `ops/` ;
-- le back-office s'appelle toujours `AdminUi` ;
-- on evite les dossiers racine concurrents comme `bo/`, `pages/`, `frontend/`, `backend/`, `api/`, `domain/`, ou `services/`.
+- executable applications live under `apps/`;
+- libraries and packages live under `packages/`;
+- SPAs and web frontends live under `ui/`;
+- tests live under `tests/`;
+- operations artifacts live under `ops/`;
+- the back office is always named `AdminUi`;
+- avoid competing root folders such as `bo/`, `pages/`, `frontend/`, `backend/`, `api/`, `domain/`, or `services/`.
 
-Modele recommande pour l'admin web :
+Recommended model for the web admin:
 
-- `apps/MaNoir.PlatformOps.AdminUi/` est le host web .NET ;
-- `ui/` contient un ou plusieurs modules frontend compiles separement ;
-- on n'introduit l'AdminUi que lorsqu'un besoin d'exploitation humain apparait reellement.
+- `apps/MaNoir.PlatformOps.AdminUi/` is the .NET web host;
+- `ui/` contains one or more separately built frontend modules;
+- `AdminUi` should only be introduced once there is a real human operations need.
 
 ## Documentation
 
-Le document de reference pour la vision d'ensemble est [ARCHITECTURE.md](ARCHITECTURE.md).
+The reference document for the overall vision is [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Il decrit notamment :
+It describes in particular:
 
-- la big picture de MaNoir ;
-- le decoupage des responsabilites ;
-- le positionnement de Platform Operations ;
-- la strategie multirepo ;
-- les regles de dependance ;
-- les conventions de publication des packages.
+- the MaNoir big picture;
+- the responsibility split;
+- the Platform Operations positioning;
+- the multi-repository strategy;
+- the dependency rules;
+- the package publishing conventions.
 
 ## Copilot Customization
 
-Ce repo embarque un premier socle de customisation Copilot dans `.github/` :
+This repository also includes an initial Copilot customization baseline in `.github/`:
 
-- `copilot-instructions.md` pour les invariants globaux du repo ;
-- des fichiers `.instructions.md` pour les regles ciblees ;
-- des `SKILL.md` pour les workflows repetables comme le placement d'un composant ou le bootstrap d'un nouveau repo.
+- `copilot-instructions.md` for repository-wide invariants;
+- `.instructions.md` files for targeted rules;
+- `SKILL.md` files for repeatable workflows such as placing a component or bootstrapping a new repository.
 
-L'objectif est de rendre le bootstrap et les futurs decoupages de PlatformOps plus reproductibles.
+The goal is to make PlatformOps bootstrapping and future splits more reproducible.
 
 ## Intention
 
-Le but de cette base n'est pas d'etre parfaite des le premier jour.
-Le but est de rendre explicite la frontiere PlatformOps tres tot, afin d'eviter que les sujets de deployment et de runtime ne retombent soit dans le Core, soit dans un repo metier par commodite.
+The goal of this baseline is not to be perfect on day one.
+The goal is to make the PlatformOps boundary explicit early, so deployment and runtime concerns do not slide back into either the Core or a business repository out of convenience.
 

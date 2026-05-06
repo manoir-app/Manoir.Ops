@@ -1,291 +1,291 @@
-# MaNoir - Architecture cible
+# MaNoir - Target Architecture
 
-## Objet du document
+## Purpose of This Document
 
-Ce document fixe la vision d'ensemble de MaNoir pour la V2.
+This document defines the overall vision for MaNoir V2.
 
-L'objectif n'est pas de decrire une architecture ideale ou exhaustive, mais de poser des regles simples pour eviter de reconstruire un monolithe fonctionnel dans lequel se melangent metier, front, API, orchestration et integrations.
+The goal is not to describe an ideal or exhaustive architecture, but to establish simple rules that help avoid rebuilding a functional monolith where business logic, frontend, APIs, orchestration, and integrations are all mixed together.
 
-Le principe directeur est le suivant :
+The guiding principle is the following:
 
-- garder un socle transverse fort mais limite ;
-- separer les grands domaines metier ;
-- isoler les agents d'orchestration ;
-- isoler les experiences utilisateur composees ;
-- rendre visibles les dependances via des packages prives versionnes.
+- keep a strong but bounded transverse foundation;
+- separate the main business domains;
+- isolate orchestration agents;
+- isolate composed user experiences;
+- make dependencies visible through versioned private packages.
 
-## Probleme a resoudre
+## Problem to Solve
 
-La difficulte principale constatee sur les iterations precedentes n'etait pas seulement technique.
-Le probleme etait surtout organisationnel : trop de responsabilites ont fini par vivre dans un seul projet.
+The main difficulty observed in previous iterations was not only technical.
+It was mostly organizational: too many responsibilities ended up living in a single project.
 
-Concretement, le meme ensemble contenait :
+Concretely, the same codebase contained:
 
-- du metier ;
-- du front ;
-- des API ;
-- des interactions externes ;
-- de la communication entre agents ;
-- de l'orchestration ;
-- des dashboards et autres experiences composees.
+- business logic;
+- frontend code;
+- APIs;
+- external interactions;
+- communication between agents;
+- orchestration;
+- dashboards and other composed experiences.
 
-Le but de cette V2 est de repousser le plus loin possible cette derive en rendant explicites :
+The goal of V2 is to push that drift as far away as possible by making the following explicit:
 
-- les proprietaires fonctionnels ;
-- les surfaces publiques ;
-- les dependances autorisees ;
-- les zones experimentales.
+- functional owners;
+- public surfaces;
+- allowed dependencies;
+- experimental zones.
 
-## Vue d'ensemble
+## Overview
 
-MaNoir est organise autour de six ensembles de responsabilites.
+MaNoir is organized around six groups of responsibilities.
 
 ### 1. Platform Core
 
-Le Platform Core contient les briques sans lesquelles le reste ne peut pas exister.
+The Platform Core contains the building blocks without which the rest cannot exist.
 
-Il regroupe notamment :
+It notably includes:
 
-- identite, users, foyers, privacy, permissions, preferences ;
-- lieux et topologie transverse ;
-- objets transverses de coordination, comme les action items ;
-- notifications ;
-- configuration et administration ;
-- communication inter-process.
+- identity, users, households, privacy, permissions, preferences;
+- transverse places and topology;
+- transverse coordination objects, such as action items;
+- notifications;
+- configuration and administration;
+- inter-process communication.
 
-Le Platform Core n'a pas vocation a porter la logique metier des grands domaines.
+The Platform Core is not meant to carry the business logic of the main domains.
 
 ### 2. Communication Hub
 
-Le Communication Hub centralise les interactions externes.
+The Communication Hub centralizes external interactions.
 
-Il gere notamment :
+It notably handles:
 
-- ingestion multi-canal ;
-- normalisation ;
-- correlation ;
-- deduplication ;
-- tracabilite et provenance.
+- multi-channel ingestion;
+- normalization;
+- correlation;
+- deduplication;
+- traceability and provenance.
 
-Il sait rapprocher plusieurs signaux externes qui parlent probablement de la meme chose, mais il n'est pas proprietaire du sens metier final.
+It can reconcile multiple external signals that probably refer to the same thing, but it is not the owner of the final business meaning.
 
-### 3. Domaines metier
+### 3. Business Domains
 
-Les grands domaines metier portent les objets, regles et usages fonctionnels propres a chaque sous-ensemble du systeme.
+The main business domains own the objects, rules, and functional usages specific to each subsystem.
 
-Exemples de domaines envisages :
+Examples of expected domains:
 
-- Home ;
-- Stock ;
-- Possessions ;
+- Home;
+- Stock;
+- Possessions;
 - Family.
 
-Chaque domaine est proprietaire de sa verite metier.
+Each domain owns its business truth.
 
 ### 4. Platform Operations
 
-La famille Platform Operations regroupe les composants d'exploitation et de control plane de la plateforme.
+The Platform Operations family groups the operating and control-plane components of the platform.
 
-Elle couvre notamment :
+It notably covers:
 
-- le deploiement de la plateforme ;
-- la convergence vers une cible d'execution ;
-- le pilotage Kubernetes ou Docker selon le mode choisi ;
-- la configuration d'exploitation ;
-- l'etat technique du runtime.
+- platform deployment;
+- convergence toward an execution target;
+- Kubernetes or Docker operation depending on the chosen mode;
+- operations configuration;
+- technical runtime state.
 
-Ces composants ne relevent ni du metier, ni du Core transverse. Ils pilotent la plateforme, mais ne doivent pas devenir proprietaires des objets metier.
+These components belong neither to business logic nor to the transverse Core. They operate the platform, but must not become the owners of business objects.
 
-### 5. Agents operationnels
+### 5. Operational Agents
 
-Les agents orchestrent, surveillent, planifient et enchainent.
+Agents orchestrate, monitor, plan, and chain actions.
 
-Ils peuvent consommer plusieurs domaines et le socle transverse, mais ils ne doivent pas devenir la source de verite fonctionnelle du systeme.
+They may consume multiple domains and the transverse foundation, but they must not become the functional source of truth of the system.
 
-### 6. Experiences composees
+### 6. Composed Experiences
 
-Les experiences composees regroupent les interfaces transverses orientees usage :
+Composed experiences group transverse, usage-oriented interfaces:
 
-- dashboards ;
-- tablettes ;
-- experiences front ;
-- adaptateurs ou facades orientes usage.
+- dashboards;
+- tablets;
+- frontend experiences;
+- usage-oriented adapters or facades.
 
-Elles composent les capacites existantes, mais ne redefinissent pas les modeles metier.
+They compose existing capabilities, but do not redefine business models.
 
-## Regles de structure
+## Structural Rules
 
-Les regles suivantes servent de constitution minimale du systeme.
+The following rules serve as the minimal constitution of the system.
 
-1. Le Core fournit des primitives transverses, pas du metier cache.
-2. Un domaine est proprietaire de son metier.
-3. Le Communication Hub correle et route, mais ne decide pas seul du sens metier final.
-4. Les composants de Platform Operations pilotent l'execution de la plateforme, pas son metier.
-5. Un agent orchestre, mais ne devient pas source de verite.
-6. Une UI compose et pilote via les surfaces publiques, mais ne possede pas de logique metier canonique.
-7. Entre repos, on depend de contrats publics versionnes, pas d'implementations internes.
+1. The Core provides transverse primitives, not hidden business logic.
+2. A domain owns its business logic.
+3. The Communication Hub correlates and routes, but does not decide final business meaning on its own.
+4. Platform Operations components drive platform execution, not business truth.
+5. An agent orchestrates, but does not become a source of truth.
+6. A UI composes and drives through public surfaces, but does not own canonical business logic.
+7. Across repositories, depend on versioned public contracts, not on internal implementations.
 
-## Strategie de decoupage des repos
+## Repository Split Strategy
 
-La strategie retenue est le multirepo avec packages NuGet prives.
+The chosen strategy is a multi-repository setup with private NuGet packages.
 
-Ce choix permet :
+This choice allows:
 
-- de travailler sur des domaines differents de facon separee ;
-- de versionner les surfaces publiques ;
-- de rendre le couplage visible ;
-- d'iterer rapidement sans reconstruire une solution unique geante.
+- working on different domains separately;
+- versioning public surfaces;
+- making coupling visible;
+- iterating quickly without rebuilding a single giant solution.
 
-La structure cible est la suivante.
+The target structure is the following.
 
-### Repo plateforme
+### Platform Repository
 
-Le repo plateforme heberge le socle transverse et le hub d'interactions externes.
+The platform repository hosts the transverse foundation and the external interaction hub.
 
-Exemples de projets :
+Examples of projects:
 
 - `MaNoir.Core`
 - `MaNoir.Core.Contracts`
-- `MaNoir.Core.Client` si necessaire
+- `MaNoir.Core.Client` if needed
 - `MaNoir.Core.Api`
 - `MaNoir.Core.AdminUi`
-- `MaNoir.Core.AdminUi.Hosting` si un socle NuGet transverse est necessaire pour standardiser les hosts d'administration
+- `MaNoir.Core.AdminUi.Hosting` if a transverse NuGet foundation is needed to standardize administration hosts
 - `MaNoir.CommunicationHub`
 - `MaNoir.CommunicationHub.Contracts`
-- `MaNoir.CommunicationHub.Client` si necessaire
-- `MaNoir.CommunicationHub.Api` si necessaire
+- `MaNoir.CommunicationHub.Client` if needed
+- `MaNoir.CommunicationHub.Api` if needed
 
-### Repos de domaines
+### Domain Repositories
 
-Chaque grand domaine dispose de son propre repo.
+Each major domain has its own repository.
 
-Exemples de structure :
+Examples of structure:
 
 - `MaNoir.Stock.Domain`
 - `MaNoir.Stock.Contracts`
-- `MaNoir.Stock.Client` si necessaire
+- `MaNoir.Stock.Client` if needed
 - `MaNoir.Stock.Api`
 - `MaNoir.Stock.AdminUi`
-- `MaNoir.Stock.AgentLocal` si besoin
+- `MaNoir.Stock.AgentLocal` if needed
 
-Le meme principe s'applique a `MaNoir.Home`, `MaNoir.Possessions`, `MaNoir.Family`, etc.
+The same principle applies to `MaNoir.Home`, `MaNoir.Possessions`, `MaNoir.Family`, and so on.
 
-### Repo Platform Operations
+### Platform Operations Repository
 
-Les composants de pilotage de plateforme vivent dans une famille dediee, distincte du Core et des agents metier.
+Platform operating components live in a dedicated family, separate from the Core and from business agents.
 
-Exemple typique : un composant comme Gaia, charge de converger la configuration de la plateforme vers une cible Kubernetes ou Docker, releve de cette famille.
+A typical example is a component such as Gaia, responsible for converging the platform configuration toward a Kubernetes or Docker target.
 
-Exemples de structure :
+Examples of structure:
 
 - `MaNoir.PlatformOps.Core`
 - `MaNoir.PlatformOps.Contracts`
-- `MaNoir.PlatformOps.Api` si une surface de pilotage est necessaire
+- `MaNoir.PlatformOps.Api` if an operating surface is needed
 - `MaNoir.PlatformOps.Provider.Kubernetes`
 - `MaNoir.PlatformOps.Provider.Docker`
-- `MaNoir.PlatformOps.AdminUi` si une interface d'exploitation apparait
+- `MaNoir.PlatformOps.AdminUi` if an operations interface appears
 
-Cette famille porte les sujets de deploiement, de convergence et de control plane.
-Elle ne doit pas absorber la logique metier des domaines ni les primitives du Core transverse.
+This family owns deployment, convergence, and control-plane concerns.
+It must not absorb business logic from the domains or primitives from the transverse Core.
 
-### Repos d'agents transverses
+### Transverse Agent Repositories
 
-Les agents ne sont pas isoles par defaut dans un repo par agent.
+Agents are not isolated by default into one repository per agent.
 
-La regle retenue est la suivante :
+The rule is the following:
 
-- un agent mono-domaine vit dans le repo du domaine ;
-- un agent transverse vit dans un repo d'agents transverses ;
-- un nouveau repo d'agents n'est cree que s'il correspond a une vraie frontiere stable.
+- a single-domain agent lives in the domain repository;
+- a transverse agent lives in a transverse agents repository;
+- a new agents repository is created only when it matches a real stable boundary.
 
-Exemples :
+Examples:
 
 - `MaNoir.Agents.Local`
-- `MaNoir.Agents.Remote` si un vrai besoin apparait plus tard
+- `MaNoir.Agents.Remote` if a real need appears later
 
-Chaque repo d'agents peut heberger plusieurs agents proches, ainsi qu'un runtime commun si cela a du sens.
+Each agents repository may host several related agents, along with a shared runtime if that makes sense.
 
-### Repo Experiences
+### Experiences Repository
 
-Les interfaces front orientees usage vivent dans un repo dedie aux experiences composees.
+Usage-oriented frontend interfaces live in a repository dedicated to composed experiences.
 
-Exemples :
+Examples:
 
 - `MaNoir.Experience.Shell`
 - `MaNoir.Experience.Tablet`
 - `MaNoir.Experience.Dashboard`
 
-### Repo Lab
+### Lab Repository
 
-Il est probable qu'un depot de quarantaine finisse par exister.
+A quarantine repository will probably end up existing.
 
-Plutot que de le nier, il est preferable de l'assumer sous une forme controlee, par exemple :
+Rather than denying it, it is better to acknowledge it in a controlled form, for example:
 
 - `MaNoir.Lab`
 - `MaNoir.Experimental`
 
-Ce depot n'a pas le meme statut que les autres.
+This repository does not have the same status as the others.
 
-Regles associees :
+Associated rules:
 
-- aucun autre repo ne doit dependre de lui pour un besoin central ;
-- il ne doit pas publier de package canonique ;
-- tout ce qui y entre doit avoir un proprietaire et un critere de sortie.
+- no other repository must depend on it for a central need;
+- it must not publish a canonical package;
+- everything that enters it must have an owner and an exit criterion.
 
-## Strategie de publication des packages
+## Package Publishing Strategy
 
-Tous les projets n'ont pas vocation a etre publies.
+Not every project is meant to be published.
 
-### Projets publiables
+### Publishable Projects
 
-Toujours publiables :
+Always publishable:
 
 - `MaNoir.X.Contracts`
 
-Publiables seulement s'il existe plusieurs consommateurs reels :
+Publishable only when several real consumers exist:
 
 - `MaNoir.X.Client`
 
-Publiables par exception explicite lorsqu'ils portent une infrastructure transverse stable :
+Publishable by explicit exception when they carry stable transverse infrastructure:
 
-- `MaNoir.Core.AdminUi.Hosting` pour les bases .NET de creation des `MaNoir.X.AdminUi`
+- `MaNoir.Core.AdminUi.Hosting` for the .NET foundations used to build `MaNoir.X.AdminUi`
 
-### Projets non publiables par defaut
+### Projects Not Publishable by Default
 
-Ces projets restent internes au repo :
+These projects stay internal to the repository:
 
 - `MaNoir.X.Domain`
 - `MaNoir.X.Api`
 - `MaNoir.X.AdminUi`
 - `MaNoir.X.AgentLocal`
 
-Le but est d'eviter de transformer chaque repo en mini-framework.
+The goal is to avoid turning each repository into a mini-framework.
 
-### Cas particulier du socle AdminUi transverse
+### Special Case: Transverse AdminUi Foundation
 
-Un package comme `MaNoir.Core.AdminUi.Hosting` est legitime si, et seulement si, il porte un socle technique transverse dont plusieurs couches ont reellement besoin pour construire leur host `AdminUi`.
+A package such as `MaNoir.Core.AdminUi.Hosting` is legitimate if, and only if, it carries a transverse technical foundation that several layers genuinely need in order to build their `AdminUi` host.
 
-Son role reste general : fournir les composants de base pour creer le web host .NET des AdminUi, sans absorber d'ecrans ou de logique metier.
+Its role remains general: provide the base components needed to create the .NET web host for AdminUi applications, without absorbing screens or business logic.
 
-### Cas particulier du socle frontend transverse
+### Special Case: Transverse Frontend Foundation
 
-Le dispositif prevoit aussi un package frontend partage, cette fois sous forme de package npm.
+The model also allows for a shared frontend package, this time as an npm package.
 
-Le nom cible naturel est `ui/MaNoir.Core.AdminUi.Shared/` lorsqu'il sert de socle commun aux back-offices MaNoir.
+The natural target name is `ui/MaNoir.Core.AdminUi.Shared/` when it serves as a common foundation for MaNoir back offices.
 
-Son role reste general : contenir les composants, controles et utilitaires React/UI reutilisables, sans absorber d'ecrans ni de logique metier de domaine.
+Its role remains general: contain reusable React/UI components, controls, and utilities without absorbing screens or domain business logic.
 
-La regle de separation reste la suivante :
+The separation rule remains the following:
 
-- le NuGet `MaNoir.Core.AdminUi.Hosting` porte les bases .NET du host ;
-- le package npm `MaNoir.Core.AdminUi.Shared` porte les bases React/UI ;
-- les modules fonctionnels restent dans `ui/MaNoir.X.AdminUi.<Feature>/`.
+- the NuGet `MaNoir.Core.AdminUi.Hosting` carries the .NET host foundations;
+- the npm package `MaNoir.Core.AdminUi.Shared` carries the React/UI foundations;
+- functional modules remain under `ui/MaNoir.X.AdminUi.<Feature>/`.
 
-## Convention de structure de dossiers
+## Folder Structure Convention
 
-Tous les repositories MaNoir devraient suivre le meme vocabulaire racine pour eviter les variations du type `ui`, `bo`, `pages`, `api`, `domain`, ou `services` poses au hasard au niveau du repo.
+All MaNoir repositories should follow the same root vocabulary to avoid random variations such as `ui`, `bo`, `pages`, `api`, `domain`, or `services` being introduced at repository level.
 
-Structure racine recommandee :
+Recommended root structure:
 
 ```text
 /
@@ -299,46 +299,46 @@ Structure racine recommandee :
 	ops/
 ```
 
-Tous ces dossiers ne sont pas obligatoires dans chaque repo. En revanche, si un besoin apparait, il doit utiliser ce vocabulaire plutot qu'une nouvelle convention locale.
+Not all of these folders are required in every repository. However, when a need appears, it should use this vocabulary rather than a new local convention.
 
-Regles associees :
+Associated rules:
 
-1. `apps/` contient les composants executables, hebergeables, ou lancables, par exemple les API, workers, hosts et applications .NET.
-2. `packages/` contient les composants reutilisables, partageables ou publiables, par exemple `Domain`, `Contracts`, `Client` et autres librairies.
-3. `ui/` contient les frontends web, modules SPA, back-offices React ou Vue, design systems, et packages frontend equivalents.
-4. `tests/` contient tous les projets de test, quelle que soit leur techno.
-5. `ops/` contient les manifests, scripts de deploiement, docker compose, helm charts, et artefacts d'exploitation portes par le repo.
-6. `docs/` contient la documentation specifique au repo quand elle depasse le README et l'architecture racine.
-7. `eng/` contient l'outillage de build, les scripts d'automatisation, et les helpers d'ingenierie.
-8. On n'introduit pas de dossiers racine concurrents comme `bo/`, `pages/`, `backend/`, `frontend/`, `services/`, ou `src/` comme bloc generique unique.
+1. `apps/` contains executable, hostable, or runnable components, for example APIs, workers, hosts, and .NET applications.
+2. `packages/` contains reusable, shareable, or publishable components, for example `Domain`, `Contracts`, `Client`, and other libraries.
+3. `ui/` contains web frontends, SPA modules, React or Vue back offices, design systems, and equivalent frontend packages.
+4. `tests/` contains all test projects, regardless of technology.
+5. `ops/` contains manifests, deployment scripts, docker compose files, helm charts, and operations artifacts owned by the repository.
+6. `docs/` contains repository-specific documentation when it goes beyond the README and the root architecture document.
+7. `eng/` contains build tooling, automation scripts, and engineering helpers.
+8. Do not introduce competing root folders such as `bo/`, `pages/`, `backend/`, `frontend/`, `services/`, or `src/` as a single generic block.
 
-Convention de nommage et de placement :
+Naming and placement convention:
 
-1. Chaque projet est place dans un dossier du meme nom exact que le projet.
-2. Les composants .NET executables vont typiquement dans `apps/<ExactProjectName>/`.
-3. Les librairies et packages .NET vont typiquement dans `packages/<ExactProjectName>/`.
-4. Les SPA, modules front et packages JavaScript ou TypeScript vont typiquement dans `ui/<ExactProjectName>/`.
-5. Les projets de test suivent la meme logique sous `tests/`, par exemple `tests/MaNoir.X.Domain.Tests/` ou `tests/MaNoir.X.AdminUi.Tests/`.
-6. Le back-office s'appelle toujours `AdminUi` comme nom de projet, jamais `Bo`, `BackOffice`, `Ui`, ou `Pages`.
-7. Les experiences front composees s'appellent `Experience.*`.
-8. Les composants de pilotage runtime s'appellent `PlatformOps.*`.
+1. Every project is placed in a folder with the exact same name as the project.
+2. Executable .NET components typically live in `apps/<ExactProjectName>/`.
+3. .NET libraries and packages typically live in `packages/<ExactProjectName>/`.
+4. SPAs, frontend modules, and JavaScript or TypeScript packages typically live in `ui/<ExactProjectName>/`.
+5. Test projects follow the same logic under `tests/`, for example `tests/MaNoir.X.Domain.Tests/` or `tests/MaNoir.X.AdminUi.Tests/`.
+6. The back office is always named `AdminUi` as a project name, never `Bo`, `BackOffice`, `Ui`, or `Pages`.
+7. Composed frontend experiences are named `Experience.*`.
+8. Runtime operating components are named `PlatformOps.*`.
 
-Modele recommande pour l'administration web :
+Recommended model for web administration:
 
-1. `apps/MaNoir.X.AdminUi/` designe le host web .NET du back-office.
-2. Ce host sert les assets compiles de un ou plusieurs modules frontend situes dans `ui/`.
-3. Les modules frontend d'administration suivent un suffixe fonctionnel explicite, par exemple `ui/MaNoir.X.AdminUi.Users/`, `ui/MaNoir.X.AdminUi.Settings/`, ou `ui/MaNoir.X.AdminUi.Inventory/`.
-4. Un package partage frontend peut exister sous `ui/MaNoir.X.AdminUi.Shared/` pour le design system, le client HTTP, ou les composants communs d'un domaine.
-5. Un package npm transverse de plateforme peut aussi exister sous `ui/MaNoir.Core.AdminUi.Shared/` pour les composants, controles et utilitaires React/UI communs a plusieurs AdminUi.
-6. On evite de transformer `MaNoir.X.AdminUi` en une unique SPA monolithique si plusieurs modules fonctionnels peuvent etre compiles et servis separement.
+1. `apps/MaNoir.X.AdminUi/` designates the .NET web host of the back office.
+2. This host serves the built assets of one or more frontend modules located in `ui/`.
+3. Administration frontend modules use an explicit functional suffix, for example `ui/MaNoir.X.AdminUi.Users/`, `ui/MaNoir.X.AdminUi.Settings/`, or `ui/MaNoir.X.AdminUi.Inventory/`.
+4. A shared frontend package may exist under `ui/MaNoir.X.AdminUi.Shared/` for the design system, HTTP client, or common components of a domain.
+5. A transverse platform npm package may also exist under `ui/MaNoir.Core.AdminUi.Shared/` for React/UI components, controls, and utilities shared across several AdminUi applications.
+6. Avoid turning `MaNoir.X.AdminUi` into a single monolithic SPA if several functional modules can be built and served separately.
 
-Regle pratique de build :
+Practical build rule:
 
-1. Les builds `dotnet` doivent pouvoir cibler `apps/`, `packages/` et `tests/` sans devoir deviner ou sont les projets .NET.
-2. Les builds `npm`, `pnpm` ou `yarn` doivent pouvoir cibler `ui/` pour retrouver toutes les SPA et packages frontend.
-3. Le host `MaNoir.X.AdminUi` doit pouvoir servir le resultat de compilation de plusieurs modules `ui/` sans obliger a produire une seule grosse SPA.
+1. `dotnet` builds must be able to target `apps/`, `packages/`, and `tests/` without having to guess where the .NET projects are.
+2. `npm`, `pnpm`, or `yarn` builds must be able to target `ui/` to find all SPAs and frontend packages.
+3. The `MaNoir.X.AdminUi` host must be able to serve the build output of several `ui/` modules without forcing a single large SPA.
 
-Exemple pour un repo de domaine avec API .NET, host d'administration .NET et modules React :
+Example for a domain repository with a .NET API, a .NET admin host, and React modules:
 
 ```text
 /
@@ -362,129 +362,129 @@ Exemple pour un repo de domaine avec API .NET, host d'administration .NET et mod
 		MaNoir.Stock.AdminUi.Tests/
 ```
 
-Si un back-office est entierement server-side, `apps/MaNoir.X.AdminUi/` peut suffire. Si le back-office embarque des frontends React ou Vue, `apps/MaNoir.X.AdminUi/` reste le host et les modules frontend vivent dans `ui/`.
+If a back office is fully server-side, `apps/MaNoir.X.AdminUi/` may be enough. If the back office embeds React or Vue frontends, `apps/MaNoir.X.AdminUi/` remains the host and frontend modules live in `ui/`.
 
-## Regles de dependance
+## Dependency Rules
 
-Les dependances doivent rester lisibles et intentionnelles.
+Dependencies must remain readable and intentional.
 
-### Regles generales
+### General Rules
 
-1. `MaNoir.Core` ne depend d'aucun domaine metier.
-2. `MaNoir.CommunicationHub` peut dependre du Core, mais pas d'un domaine pour interpreter le metier final.
-3. Un domaine peut dependre du Core.
-4. Un domaine peut consommer les contrats du Communication Hub.
-5. Platform Operations peut dependre du Core et des contrats publics necessaires au pilotage de la plateforme.
-6. Platform Operations ne depend pas du code interne des domaines metier.
-7. Un domaine ne depend pas directement du code interne d'un autre domaine.
-8. Un agent peut dependre des contrats et clients publics des blocs qu'il orchestre.
-9. Un agent ne depend jamais d'une UI.
-10. Une UI d'administration depend d'une API ou d'un client public, jamais du Domain interne.
-11. Une UI d'administration peut aussi dependre d'un socle technique transverse de host, par exemple `MaNoir.Core.AdminUi.Hosting`, tant que ce socle reste purement technique.
-12. Une experience front composee depend des surfaces publiques, jamais d'un Domain interne.
+1. `MaNoir.Core` does not depend on any business domain.
+2. `MaNoir.CommunicationHub` may depend on the Core, but not on a domain in order to interpret final business meaning.
+3. A domain may depend on the Core.
+4. A domain may consume Communication Hub contracts.
+5. Platform Operations may depend on the Core and the public contracts needed to operate the platform.
+6. Platform Operations does not depend on internal business-domain code.
+7. A domain does not depend directly on the internal code of another domain.
+8. An agent may depend on the public contracts and clients of the blocks it orchestrates.
+9. An agent never depends on a UI.
+10. An administration UI depends on an API or a public client, never on the internal Domain.
+11. An administration UI may also depend on a transverse technical host foundation, for example `MaNoir.Core.AdminUi.Hosting`, as long as that foundation remains purely technical.
+12. A composed frontend experience depends on public surfaces, never on an internal Domain.
 
-### Forme des echanges entre repos
+### Shape of Inter-Repository Exchanges
 
-Les echanges entre repos se font preferentiellement via :
+Inter-repository exchanges should preferably use:
 
-- `Contracts` pour les DTO, evenements, commandes et identifiants publics ;
-- `Client` pour les facades de consommation HTTP ou messaging.
+- `Contracts` for DTOs, events, commands, and public identifiers;
+- `Client` for HTTP or messaging consumption facades.
 
-On evite les references directes a des implementations internes.
+Avoid direct references to internal implementations.
 
-## Convention de versioning
+## Versioning Convention
 
-Les packages publics suivent une logique SemVer simple.
+Public packages follow a simple SemVer logic.
 
-1. rupture de contrat : version majeure ;
-2. ajout compatible : version mineure ;
-3. correctif non cassant : version patch.
+1. contract break: major version;
+2. compatible addition: minor version;
+3. non-breaking fix: patch version.
 
-Regles complementaires :
+Complementary rules:
 
-- pas de breaking change silencieux sur les `Contracts` ;
-- les `Client` suivent idealement la meme version majeure que leurs `Contracts` associes ;
-- les prereleases sont autorisees pour iterer vite.
+- no silent breaking change on `Contracts`;
+- `Client` packages should ideally follow the same major version as their associated `Contracts`;
+- prereleases are allowed to iterate quickly.
 
-## Guide de placement rapide
+## Quick Placement Guide
 
-Quand un nouveau composant apparait, les questions suivantes permettent de decider ou il doit vivre.
+When a new component appears, the following questions help decide where it should live.
 
-1. Est-ce une primitive sans laquelle le reste ne peut pas exister ?
-Alors il releve probablement du Core transverse.
+1. Is it a primitive without which the rest cannot exist?
+Then it probably belongs to the transverse Core.
 
-2. Est-ce un composant qui ingere, normalise, correle ou deduplique des signaux externes ?
-Alors il releve probablement du Communication Hub.
+2. Is it a component that ingests, normalizes, correlates, or deduplicates external signals?
+Then it probably belongs to the Communication Hub.
 
-3. Est-ce un composant qui deploie, pilote ou fait converger la plateforme vers une cible technique ?
-Alors il releve probablement de Platform Operations.
+3. Is it a component that deploys, operates, or converges the platform toward a technical target?
+Then it probably belongs to Platform Operations.
 
-4. Est-ce un composant proprietaire d'une verite metier specifique ?
-Alors il releve probablement d'un domaine metier.
+4. Is it a component that owns a specific business truth?
+Then it probably belongs to a business domain.
 
-5. Est-ce un composant qui orchestre plusieurs blocs sans posseder leur verite metier ?
-Alors il releve probablement des agents operationnels.
+5. Is it a component that orchestrates several blocks without owning their business truth?
+Then it probably belongs to operational agents.
 
-6. Est-ce un composant qui assemble plusieurs blocs pour exposer une experience utilisateur ?
-Alors il releve probablement des experiences composees.
+6. Is it a component that assembles several blocks to expose a user experience?
+Then it probably belongs to composed experiences.
 
-7. Si aucun emplacement n'est evident, faut-il le placer provisoirement dans une zone de quarantaine ?
-Oui, mais uniquement dans une zone de type `MaNoir.Lab`, avec un proprietaire explicite et un critere de sortie.
+7. If no location is obvious, should it be placed temporarily in a quarantine zone?
+Yes, but only in a `MaNoir.Lab`-like area, with an explicit owner and an exit criterion.
 
-## Ce que ce repo doit porter
+## What This Repository Should Carry
 
-Le present repo a vocation a porter la partie plateforme de MaNoir.
+The current repository is meant to host the platform part of MaNoir.
 
-Il est donc destine a heberger prioritairement :
+It is therefore intended to host, first and foremost:
 
-- le Core transverse ;
-- les contrats publics du Core ;
-- l'API du Core ;
-- l'UI d'administration du Core ;
-- le Communication Hub et ses contrats.
+- the transverse Core;
+- the Core public contracts;
+- the Core API;
+- the Core administration UI;
+- the Communication Hub and its contracts.
 
-Il ne doit pas devenir le depot par defaut de tout ce qui n'a pas encore trouve sa place.
-Il ne doit pas non plus absorber les composants de Platform Operations.
+It must not become the default repository for everything that has not found its place yet.
+It must not absorb Platform Operations components either.
 
-## Ce qu'il faut eviter
+## What to Avoid
 
-Les signes suivants indiqueraient une derive a corriger rapidement :
+The following signs would indicate a drift that should be corrected quickly:
 
-- le Core commence a accumuler des champs ou services specifiques a un domaine ;
-- le Communication Hub commence a creer du metier au lieu de correler ;
-- un composant de deploiement ou de control plane est range dans le Core ;
-- un agent devient proprietaire d'un etat canonique ;
-- une UI embarque des regles metier profondes ;
-- un projet `Common`, `Shared` ou `Utils` commence a devenir indispensable a tout le monde ;
-- `MaNoir.Lab` devient une dependance centrale.
+- the Core starts accumulating domain-specific fields or services;
+- the Communication Hub starts creating business meaning instead of correlating;
+- a deployment or control-plane component is placed in the Core;
+- an agent becomes the owner of canonical state;
+- a UI embeds deep business rules;
+- a `Common`, `Shared`, or `Utils` project starts becoming indispensable to everyone;
+- `MaNoir.Lab` becomes a central dependency.
 
-## Demarrage recommande
+## Recommended Start
 
-Il n'est pas necessaire de creer tous les repos et tous les projets des le premier jour.
+It is not necessary to create all repositories and all projects on day one.
 
-Le plus raisonnable est de demarrer avec :
+The most reasonable starting point is:
 
-1. le repo plateforme ;
-2. un premier vrai domaine ;
-3. un repo Platform Operations si la plateforme embarque un vrai control plane ;
-4. un repo d'agents transverses si un besoin reel apparait ;
-5. un repo experiences seulement quand une vraie UI front existe.
+1. the platform repository;
+2. a first real domain;
+3. a Platform Operations repository if the platform includes a real control plane;
+4. a transverse agents repository if a real need appears;
+5. an experiences repository only when a real frontend UI exists.
 
-La convention doit etre posee tout de suite.
-L'instanciation complete, elle, doit rester progressive.
+The convention must be established immediately.
+The full instantiation should remain progressive.
 
-## Resume
+## Summary
 
-La cible n'est pas une multiplication artificielle des projets.
-La cible est une architecture qui rend explicites :
+The target is not an artificial multiplication of projects.
+The target is an architecture that makes the following explicit:
 
-- le socle transverse ;
-- les domaines metier ;
-- le hub d'interactions ;
-- l'exploitation de la plateforme ;
-- l'orchestration par agents ;
-- les experiences composees ;
-- les surfaces publiques versionnees.
+- the transverse foundation;
+- business domains;
+- the interaction hub;
+- platform operations;
+- agent orchestration;
+- composed experiences;
+- versioned public surfaces.
 
-Le systeme restera imparfait, et un espace de quarantaine finira probablement par exister.
-Le but n'est pas de supprimer toute ambiguite pour toujours, mais de faire en sorte qu'elle arrive le plus tard possible et qu'elle reste visible.
+The system will remain imperfect, and a quarantine space will probably eventually exist.
+The goal is not to remove all ambiguity forever, but to make sure it arrives as late as possible and remains visible.
