@@ -44,6 +44,10 @@ public sealed class DockerSharedServicesCatalogTests
 		try
 		{
 			DockerDeploymentPlan plan = DockerSharedServicesCatalog.CreateDeploymentPlan(sharedServicesRootPath);
+			DockerDeploymentServicePlan loki = plan.Services.Single(service => service.Name == "loki");
+			DockerDeploymentServicePlan tempo = plan.Services.Single(service => service.Name == "tempo");
+			DockerDeploymentServicePlan prometheus = plan.Services.Single(service => service.Name == "prometheus");
+			DockerDeploymentServicePlan grafana = plan.Services.Single(service => service.Name == "grafana");
 
 			Assert.AreEqual("shared-services", plan.PluginId);
 			Assert.AreEqual("shared-services", plan.DeploymentGroup);
@@ -58,6 +62,14 @@ public sealed class DockerSharedServicesCatalogTests
 			Assert.AreEqual(DockerSharedServicesCatalog.DefaultTempoImage, plan.Services[6].Image);
 			Assert.AreEqual(DockerSharedServicesCatalog.DefaultPrometheusImage, plan.Services[7].Image);
 			Assert.AreEqual(DockerSharedServicesCatalog.DefaultGrafanaImage, plan.Services[8].Image);
+			CollectionAssert.Contains(loki.Volumes.ToArray(), Path.Combine(sharedServicesRootPath, "loki", "config", "loki.yml") + ":/etc/loki/local-config.yaml:ro");
+			CollectionAssert.Contains(tempo.Volumes.ToArray(), Path.Combine(sharedServicesRootPath, "tempo", "config", "tempo.yml") + ":/etc/tempo.yaml:ro");
+			Assert.AreEqual("PathPrefix(`/tools/loki`)", loki.Labels["traefik.http.routers.shared-tools-loki.rule"]);
+			Assert.AreEqual("PathPrefix(`/tools/tempo`)", tempo.Labels["traefik.http.routers.shared-tools-tempo.rule"]);
+			Assert.AreEqual("PathPrefix(`/tools/prometheus`)", prometheus.Labels["traefik.http.routers.shared-tools-prometheus.rule"]);
+			Assert.AreEqual("PathPrefix(`/tools/grafana`)", grafana.Labels["traefik.http.routers.shared-tools-grafana.rule"]);
+			Assert.AreEqual("%(protocol)s://%(domain)s/tools/grafana/", grafana.Environment.Single(entry => entry.Name == "GF_SERVER_ROOT_URL").Value);
+			Assert.AreEqual("true", grafana.Environment.Single(entry => entry.Name == "GF_SERVER_SERVE_FROM_SUB_PATH").Value);
 			Assert.IsTrue(plan.Services.All(service => service.ImagePullPolicy == DockerImagePullPolicy.Always));
 			CollectionAssert.AreEqual(new[] { "1883:1883" }, plan.Services[2].Ports.ToArray());
 			CollectionAssert.AreEqual(new[] { "80" }, plan.Services[4].Ports.ToArray());
@@ -69,6 +81,10 @@ public sealed class DockerSharedServicesCatalogTests
 			Assert.IsTrue(File.Exists(Path.Combine(sharedServicesRootPath, "tempo", "config", "tempo.yml")));
 			Assert.IsTrue(File.Exists(Path.Combine(sharedServicesRootPath, "prometheus", "config", "prometheus.yml")));
 			Assert.IsTrue(File.Exists(Path.Combine(sharedServicesRootPath, "grafana", "provisioning", "datasources", "datasources.yml")));
+			Assert.IsTrue(Directory.Exists(Path.Combine(sharedServicesRootPath, "loki", "data")));
+			Assert.IsTrue(Directory.Exists(Path.Combine(sharedServicesRootPath, "tempo", "data")));
+			Assert.IsTrue(Directory.Exists(Path.Combine(sharedServicesRootPath, "prometheus", "data")));
+			Assert.IsTrue(Directory.Exists(Path.Combine(sharedServicesRootPath, "grafana", "data")));
 		}
 		finally
 		{
