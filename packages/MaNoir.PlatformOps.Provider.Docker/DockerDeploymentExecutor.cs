@@ -60,7 +60,7 @@ public sealed class DockerDeploymentExecutor : IDisposable
 				recreatedContainers.Add(service.ContainerName);
 			}
 
-			CreateContainerResponse createdContainer = await _dockerClient.Containers.CreateContainerAsync(BuildCreateContainerParameters(plan, runtimeSpec, service), cancellationToken);
+			CreateContainerResponse createdContainer = await _dockerClient.Containers.CreateContainerAsync(BuildCreateContainerParameters(plan, runtimeSpec, service, planService), cancellationToken);
 			bool started = await _dockerClient.Containers.StartContainerAsync(createdContainer.ID, new ContainerStartParameters(), cancellationToken);
 			if (!started)
 				throw new InvalidOperationException("The Docker container could not be started: " + service.ContainerName + ".");
@@ -134,10 +134,11 @@ public sealed class DockerDeploymentExecutor : IDisposable
 		}
 	}
 
-	private static CreateContainerParameters BuildCreateContainerParameters(DockerDeploymentPlan plan, DockerRuntimeSpec runtimeSpec, DockerRuntimeServiceSpec service)
+	private static CreateContainerParameters BuildCreateContainerParameters(DockerDeploymentPlan plan, DockerRuntimeSpec runtimeSpec, DockerRuntimeServiceSpec service, DockerDeploymentServicePlan planService)
 	{
 		Dictionary<string, EmptyStruct> exposedPorts = new Dictionary<string, EmptyStruct>();
 		Dictionary<string, IList<PortBinding>> portBindings = new Dictionary<string, IList<PortBinding>>();
+		Dictionary<string, string> labels = new Dictionary<string, string>(StringComparer.Ordinal);
 
 		foreach (DockerRuntimePortBinding binding in service.PortBindings)
 		{
@@ -149,6 +150,22 @@ public sealed class DockerDeploymentExecutor : IDisposable
 			};
 		}
 
+		if (planService?.Labels != null)
+		{
+			foreach (KeyValuePair<string, string> label in planService.Labels)
+			{
+				if (string.IsNullOrWhiteSpace(label.Key))
+					continue;
+
+				labels[label.Key] = label.Value ?? string.Empty;
+			}
+		}
+
+		labels["manoir.managed-by"] = "platformops";
+		labels["manoir.group"] = string.IsNullOrWhiteSpace(plan.DeploymentGroup) ? plan.PluginId ?? string.Empty : plan.DeploymentGroup;
+		labels["manoir.plugin-id"] = plan.PluginId ?? string.Empty;
+		labels["manoir.service-name"] = service.ServiceName ?? string.Empty;
+
 		return new CreateContainerParameters()
 		{
 			Image = service.Image,
@@ -157,13 +174,7 @@ public sealed class DockerDeploymentExecutor : IDisposable
 			Env = service.Environment.ToList(),
 			ExposedPorts = exposedPorts.Count == 0 ? null : exposedPorts,
 			NetworkingConfig = BuildNetworkingConfig(runtimeSpec, service),
-			Labels = new Dictionary<string, string>()
-			{
-				["manoir.managed-by"] = "platformops",
-				["manoir.group"] = string.IsNullOrWhiteSpace(plan.DeploymentGroup) ? plan.PluginId ?? string.Empty : plan.DeploymentGroup,
-				["manoir.plugin-id"] = plan.PluginId ?? string.Empty,
-				["manoir.service-name"] = service.ServiceName ?? string.Empty
-			},
+			Labels = labels,
 			HostConfig = new HostConfig()
 			{
 				Mounts = service.Mounts.Select(BuildMount).ToList(),

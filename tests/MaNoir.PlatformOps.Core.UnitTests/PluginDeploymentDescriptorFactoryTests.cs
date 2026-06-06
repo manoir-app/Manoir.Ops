@@ -21,6 +21,10 @@ plugin:
   minimumMaNoirVersion: 1.8.0
 deployment:
   group: home-automation
+  adminUi:
+    pathPrefix: /home-automation
+    composeService: admin-ui
+    port: 8080
   artifacts:
     - kind: compose
       path: deploy/docker-compose.yml
@@ -37,6 +41,9 @@ SARAH_API_KEY=${{ secrets.SARAH_API_KEY }}
 
 		Assert.AreEqual("sarah", descriptor.PluginId);
     Assert.AreEqual("home-automation", descriptor.DeploymentGroup);
+    Assert.AreEqual("/home-automation", descriptor.AdminUiPathPrefix);
+    Assert.AreEqual("admin-ui", descriptor.AdminUiServiceName);
+    Assert.AreEqual(8080, descriptor.AdminUiServicePort);
 		Assert.AreEqual("deploy/docker-compose.yml", descriptor.ComposeArtifactPath);
 		Assert.AreEqual("deploy/.env.template", descriptor.EnvironmentTemplatePath);
 		Assert.AreEqual(2, descriptor.EnvironmentVariables.Count);

@@ -9,6 +9,7 @@
     <AssemblyName>MaNoir.PlatformOps.Core.UnitTests</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\apps\MaNoir.PlatformOps.AdminUi\MaNoir.PlatformOps.AdminUi.csproj" />
     <ProjectReference Include="..\..\packages\MaNoir.PlatformOps.Core\MaNoir.PlatformOps.Core.csproj" />
     <ProjectReference Include="..\..\packages\MaNoir.PlatformOps.Provider.Kubernetes\MaNoir.PlatformOps.Provider.Kubernetes.csproj" />
     <ProjectReference Include="..\..\packages\MaNoir.PlatformOps.Provider.Docker\MaNoir.PlatformOps.Provider.Docker.csproj" />

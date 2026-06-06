@@ -113,6 +113,8 @@ public sealed class PluginManifestAdminUiPage
 
 	public string Name { get; set; }
 
+	public string RelativePath { get; set; }
+
 	public string Url { get; set; }
 
 	public Dictionary<string, string> Labels { get; set; }
@@ -144,7 +146,20 @@ public sealed class PluginManifestDeployment
 {
 	public string Group { get; set; }
 
+	public PluginManifestAdminUiExposure AdminUi { get; set; }
+
 	public List<PluginManifestArtifact> Artifacts { get; set; }
+}
+
+public sealed class PluginManifestAdminUiExposure
+{
+	public string PathPrefix { get; set; }
+
+	public string ComposeService { get; set; }
+
+	public string Service { get; set; }
+
+	public int Port { get; set; }
 }
 
 public sealed class PluginManifestArtifact

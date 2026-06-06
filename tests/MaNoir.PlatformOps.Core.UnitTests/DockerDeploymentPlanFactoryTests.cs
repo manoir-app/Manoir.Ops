@@ -228,4 +228,34 @@ services:
 
 		Assert.AreEqual("sarah", plan.DeploymentGroup);
 	}
+
+	[TestMethod]
+	public void Create_ShouldAddTraefikLabelsToAdminUiService()
+	{
+		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");
+		using EnvironmentVariableScope saltScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.SecretsSaltEnvironmentVariableName, "AAECAwQFBgcICQoLDA0ODxAREhM=");
+		using EnvironmentVariableScope authJwtSigningKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.AuthJwtSigningKeyEnvironmentVariableName, "12345678901234567890123456789012");
+
+		DockerDeploymentPlan plan = DockerDeploymentPlanFactory.Create(new PluginDeploymentDescriptor()
+		{
+			PluginId = "sarah",
+			ComposeArtifactFullPath = "compose.yml",
+			AdminUiPathPrefix = "/sarah",
+			AdminUiServiceName = "api",
+			AdminUiServicePort = 8080
+		}, DockerComposeParser.Parse(@"
+services:
+  api:
+    image: manoir/sarah-api:2.3.1
+  worker:
+    image: manoir/sarah-worker:2.3.1
+"));
+
+		Assert.AreEqual("true", plan.Services[0].Labels["traefik.enable"]);
+		Assert.AreEqual(DockerRuntimeSpecFactory.SharedNetworkName, plan.Services[0].Labels["traefik.docker.network"]);
+		Assert.AreEqual("PathPrefix(`/sarah`)", plan.Services[0].Labels["traefik.http.routers.sarah-api-admin-ui.rule"]);
+		Assert.AreEqual("sarah-api-admin-ui", plan.Services[0].Labels["traefik.http.routers.sarah-api-admin-ui.service"]);
+		Assert.AreEqual("8080", plan.Services[0].Labels["traefik.http.services.sarah-api-admin-ui.loadbalancer.server.port"]);
+		Assert.AreEqual(0, plan.Services[1].Labels.Count);
+	}
 }

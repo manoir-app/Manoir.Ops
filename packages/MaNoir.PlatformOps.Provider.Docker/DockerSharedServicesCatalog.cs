@@ -23,13 +23,17 @@ public static class DockerSharedServicesCatalog
 
 	public const string DefaultMongoImage = "mongo:8";
 
+	public const string DefaultTraefikImage = "traefik:v3.1";
+
 	private static readonly string MosquittoConfigurationFileContent = "listener 1883 0.0.0.0\nallow_anonymous true\npersistence false\n";
+	private static readonly string TraefikConfigurationFileContent = "entryPoints:\n  web:\n    address: \":80\"\nproviders:\n  docker:\n    endpoint: \"unix:///var/run/docker.sock\"\n    exposedByDefault: false\n    network: \"manoir\"\n";
 
 	public static DockerDeploymentPlan CreateDeploymentPlan(string sharedServicesRootPath, IEnumerable<string> serviceNames = null)
 	{
 		string resolvedRootPath = ResolveSharedServicesRootPath(sharedServicesRootPath);
 		string dockerHostSharedServicesRootPath = ResolveDockerHostSharedServicesRootPath(resolvedRootPath);
 		EnsureMosquittoConfiguration(resolvedRootPath);
+		EnsureTraefikConfiguration(resolvedRootPath);
 		bool isDevelopmentInstance = DockerPlatformRuntimeEnvironment.IsDevelopmentInstance();
 
 		HashSet<string> requestedServiceNames = serviceNames == null
@@ -72,7 +76,8 @@ public static class DockerSharedServicesCatalog
 				CurrentImageId = container?.ImageID,
 				IsPresent = container != null,
 				IsRunning = string.Equals(container?.State, "running", StringComparison.OrdinalIgnoreCase),
-				MatchesExpectedImage = string.Equals(container?.Image, service.Image, StringComparison.OrdinalIgnoreCase)
+				MatchesExpectedImage = string.Equals(container?.Image, service.Image, StringComparison.OrdinalIgnoreCase),
+				PublishedPorts = DockerPublishedPortFormatter.Format(container?.Ports)
 			});
 		}
 
@@ -118,6 +123,7 @@ public static class DockerSharedServicesCatalog
 		string mqttConfigPath = Path.Combine(mqttRootPath, "config");
 		string mqttDataPath = Path.Combine(mqttRootPath, "data");
 		string mqttLogPath = Path.Combine(mqttRootPath, "log");
+		string traefikConfigPath = Path.Combine(sharedServicesRootPath, "traefik", "config", "traefik.yml");
 
 		return
 		[
@@ -171,6 +177,22 @@ public static class DockerSharedServicesCatalog
 				Volumes = ["manoir-shared-redis:/data"],
 				Environment = Array.Empty<DockerComposeEnvironmentEntry>(),
 				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()
+			},
+			new DockerDeploymentServicePlan()
+			{
+				Name = "traefik",
+				ContainerName = "manoir-shared-traefik",
+				Image = DefaultTraefikImage,
+				RestartPolicy = "unless-stopped",
+				ImagePullPolicy = DockerImagePullPolicy.Always,
+				Ports = ["80"],
+				Volumes =
+				[
+					traefikConfigPath + ":/etc/traefik/traefik.yml:ro",
+					"/var/run/docker.sock:/var/run/docker.sock"
+				],
+				Environment = Array.Empty<DockerComposeEnvironmentEntry>(),
+				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()
 			}
 		];
 	}
@@ -198,7 +220,8 @@ public static class DockerSharedServicesCatalog
 			Volumes = source.Volumes?.ToArray() ?? Array.Empty<string>(),
 			DependsOn = source.DependsOn?.ToArray() ?? Array.Empty<string>(),
 			Environment = source.Environment?.ToArray() ?? Array.Empty<DockerComposeEnvironmentEntry>(),
-			ResolvedEnvironment = source.ResolvedEnvironment?.ToArray() ?? Array.Empty<DockerResolvedEnvironmentEntry>()
+			ResolvedEnvironment = source.ResolvedEnvironment?.ToArray() ?? Array.Empty<DockerResolvedEnvironmentEntry>(),
+			Labels = source.Labels == null ? new Dictionary<string, string>(StringComparer.Ordinal) : new Dictionary<string, string>(source.Labels, StringComparer.Ordinal)
 		};
 	}
 
@@ -229,6 +252,16 @@ public static class DockerSharedServicesCatalog
 		string configurationFilePath = Path.Combine(mqttConfigDirectoryPath, "mosquitto.conf");
 		if (!File.Exists(configurationFilePath) || !string.Equals(File.ReadAllText(configurationFilePath), MosquittoConfigurationFileContent, StringComparison.Ordinal))
 			File.WriteAllText(configurationFilePath, MosquittoConfigurationFileContent);
+	}
+
+	private static void EnsureTraefikConfiguration(string sharedServicesRootPath)
+	{
+		string traefikConfigDirectoryPath = Path.Combine(sharedServicesRootPath, "traefik", "config");
+		Directory.CreateDirectory(traefikConfigDirectoryPath);
+
+		string configurationFilePath = Path.Combine(traefikConfigDirectoryPath, "traefik.yml");
+		if (!File.Exists(configurationFilePath) || !string.Equals(File.ReadAllText(configurationFilePath), TraefikConfigurationFileContent, StringComparison.Ordinal))
+			File.WriteAllText(configurationFilePath, TraefikConfigurationFileContent);
 	}
 
 	private static string ResolveDefaultHomeAutomationRootPath()

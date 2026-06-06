@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Docker.DotNet.Models;
 
 namespace MaNoir.PlatformOps.Provider.Docker;
 
@@ -32,9 +33,13 @@ public sealed class DockerFirstRunStatus
 
 	public IReadOnlyList<string> OperationMessages { get; set; } = Array.Empty<string>();
 
+	public IReadOnlyList<string> MissingRequiredPluginIds { get; set; } = Array.Empty<string>();
+
 	public bool HasRequiredEnvironment => EnvironmentErrors.Count == 0;
 
 	public bool HasOperationErrors => OperationErrors.Count > 0;
+
+	public bool HasAllRequiredPluginsAvailable => MissingRequiredPluginIds.Count == 0;
 
 	public bool NeedsSharedServicesDeployment => SharedServices.Any(service => !service.IsRunning || !service.MatchesExpectedImage);
 
@@ -45,6 +50,7 @@ public sealed class DockerFirstRunStatus
 	public bool HasMinimumVital => IsDockerAvailable
 		&& SharedServices.Count > 0
 		&& CoreServices.Count > 0
+		&& HasAllRequiredPluginsAvailable
 		&& SharedServices.All(service => service.IsRunning && service.MatchesExpectedImage)
 		&& CoreServices.All(service => service.IsRunning && service.MatchesExpectedImage);
 }
@@ -66,4 +72,32 @@ public sealed class DockerSharedServiceStatus
 	public bool IsRunning { get; set; }
 
 	public bool MatchesExpectedImage { get; set; }
+
+	public IReadOnlyList<string> PublishedPorts { get; set; } = Array.Empty<string>();
+}
+
+internal static class DockerPublishedPortFormatter
+{
+	public static IReadOnlyList<string> Format(IList<Port> ports)
+	{
+		if (ports == null || ports.Count == 0)
+			return Array.Empty<string>();
+
+		return ports
+			.Where(port => port.PrivatePort > 0)
+			.OrderBy(port => port.PrivatePort)
+			.ThenBy(port => port.PublicPort)
+			.ThenBy(port => port.Type, StringComparer.OrdinalIgnoreCase)
+			.Select(FormatPort)
+			.Distinct(StringComparer.Ordinal)
+			.ToArray();
+	}
+
+	private static string FormatPort(Port port)
+	{
+		string protocol = string.IsNullOrWhiteSpace(port.Type) ? "tcp" : port.Type.Trim().ToLowerInvariant();
+		return port.PublicPort > 0
+			? port.PublicPort + ":" + port.PrivatePort + "/" + protocol
+			: port.PrivatePort + "/" + protocol;
+	}
 }

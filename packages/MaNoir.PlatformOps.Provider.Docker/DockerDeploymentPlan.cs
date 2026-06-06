@@ -50,6 +50,25 @@ public sealed class DockerDeploymentServicePlan
 	public IReadOnlyList<DockerComposeEnvironmentEntry> Environment { get; set; } = Array.Empty<DockerComposeEnvironmentEntry>();
 
 	public IReadOnlyList<DockerResolvedEnvironmentEntry> ResolvedEnvironment { get; set; } = Array.Empty<DockerResolvedEnvironmentEntry>();
+
+	public IReadOnlyDictionary<string, string> Labels { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
+}
+
+public sealed class DockerAdminUiRoutePlan
+{
+	public string PluginId { get; set; }
+
+	public string PublicBasePath { get; set; }
+
+	public string ComposeServiceName { get; set; }
+
+	public int ServicePort { get; set; }
+
+	public string TraefikResourceName { get; set; }
+
+	public string RouterRule { get; set; }
+
+	public IReadOnlyDictionary<string, string> Labels { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
 }
 
 public sealed class DockerResolvedEnvironmentEntry

@@ -176,7 +176,6 @@
       "required": [
         "category",
         "name",
-        "url",
         "labels"
       ],
       "properties": {
@@ -188,6 +187,11 @@
           "type": "string",
           "minLength": 1
         },
+        "relativePath": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^/"
+        },
         "url": {
           "type": "string",
           "minLength": 1
@@ -195,7 +199,19 @@
         "labels": {
           "$ref": "#/$defs/localizedText"
         }
-      }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "relativePath"
+          ]
+        },
+        {
+          "required": [
+            "url"
+          ]
+        }
+      ]
     },
     "adminUiContribution": {
       "type": "object",
@@ -282,6 +298,36 @@
           "items": {
             "$ref": "#/$defs/publishedEntityKind"
           }
+        }
+      }
+    },
+    "adminUiExposure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pathPrefix",
+        "port"
+      ],
+      "properties": {
+        "pathPrefix": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^/"
+        },
+        "composeService": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Docker Compose service name that serves the AdminUi. Optional when the compose artifact declares a single service."
+        },
+        "service": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Legacy alias for composeService."
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
         }
       }
     },
@@ -407,6 +453,9 @@
         "group": {
           "type": "string",
           "minLength": 1
+        },
+        "adminUi": {
+          "$ref": "#/$defs/adminUiExposure"
         },
         "artifacts": {
           "type": "array",

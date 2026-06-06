@@ -21,6 +21,12 @@ public sealed class PluginDeploymentDescriptor
 
 	public string DeploymentGroup { get; set; }
 
+	public string AdminUiPathPrefix { get; set; }
+
+	public string AdminUiServiceName { get; set; }
+
+	public int? AdminUiServicePort { get; set; }
+
 	public string ComposeArtifactPath { get; set; }
 
 	public string ComposeArtifactFullPath { get; set; }
