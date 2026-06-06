@@ -23,7 +23,7 @@ public static class DockerSharedServicesCatalog
 
 	public const string DefaultMongoImage = "mongo:8";
 
-	public const string DefaultTraefikImage = "traefik:v3.1";
+	public const string DefaultTraefikImage = "traefik:v3.7";
 
 	private static readonly string MosquittoConfigurationFileContent = "listener 1883 0.0.0.0\nallow_anonymous true\npersistence false\n";
 	private static readonly string TraefikConfigurationFileContent = "entryPoints:\n  web:\n    address: \":80\"\nproviders:\n  docker:\n    endpoint: \"unix:///var/run/docker.sock\"\n    exposedByDefault: false\n    network: \"manoir\"\n";

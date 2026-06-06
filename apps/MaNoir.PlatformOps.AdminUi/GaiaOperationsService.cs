@@ -77,23 +77,9 @@ public sealed class GaiaOperationsService
 			try
 			{
 				PluginDeploymentDescriptor descriptor = PluginRepositoryDeploymentLoader.Load(repositoryRootPath);
-				DockerAdminUiRoutePlan routePlan = DockerDeploymentPlanFactory.CreateAdminUiRoutePlan(descriptor);
-				if (routePlan == null)
-					continue;
-
-				diagnostics.Add(new GaiaAdminUiRouteDiagnostic()
-				{
-					PluginId = descriptor.PluginId,
-					PluginDisplayName = descriptor.DisplayName,
-					RepositoryRootPath = repositoryRootPath,
-					PublicBasePath = routePlan.PublicBasePath,
-					ComposeServiceName = routePlan.ComposeServiceName,
-					ServicePort = routePlan.ServicePort,
-					TraefikResourceName = routePlan.TraefikResourceName,
-					RouterRule = routePlan.RouterRule,
-					LocalUrl = CombineLocalUrl(localProxyBaseUrl, routePlan.PublicBasePath),
-					Labels = routePlan.Labels
-				});
+				GaiaAdminUiRouteDiagnostic diagnostic = CreateAdminUiRouteDiagnostic(descriptor, localProxyBaseUrl, repositoryRootPath);
+				if (diagnostic != null)
+					diagnostics.Add(diagnostic);
 			}
 			catch (Exception exception)
 			{
@@ -101,6 +87,26 @@ public sealed class GaiaOperationsService
 				{
 					RepositoryRootPath = repositoryRootPath,
 					Error = exception.Message
+				});
+			}
+		}
+
+		if (!diagnostics.Any(diagnostic => string.Equals(diagnostic.PluginId, PlatformCoreCatalogPluginLoader.PlatformPluginId, StringComparison.OrdinalIgnoreCase)))
+		{
+			if (PlatformCoreCatalogPluginLoader.TryLoad(pluginRepositoriesRootPath, out PluginDeploymentDescriptor platformDescriptor, out string platformError))
+			{
+				GaiaAdminUiRouteDiagnostic diagnostic = CreateAdminUiRouteDiagnostic(platformDescriptor, localProxyBaseUrl, platformDescriptor.RepositoryRootPath);
+				if (diagnostic != null)
+					diagnostics.Add(diagnostic);
+			}
+			else if (!string.IsNullOrWhiteSpace(platformError))
+			{
+				diagnostics.Add(new GaiaAdminUiRouteDiagnostic()
+				{
+					PluginId = PlatformCoreCatalogPluginLoader.PlatformPluginId,
+					PluginDisplayName = "Platform Core",
+					RepositoryRootPath = pluginRepositoriesRootPath,
+					Error = platformError
 				});
 			}
 		}
@@ -631,6 +637,27 @@ public sealed class GaiaOperationsService
 			.Distinct(StringComparer.OrdinalIgnoreCase)
 			.OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
 			.ToArray();
+	}
+
+	private static GaiaAdminUiRouteDiagnostic CreateAdminUiRouteDiagnostic(PluginDeploymentDescriptor descriptor, string localProxyBaseUrl, string repositoryRootPath)
+	{
+		DockerAdminUiRoutePlan routePlan = DockerDeploymentPlanFactory.CreateAdminUiRoutePlan(descriptor);
+		if (routePlan == null)
+			return null;
+
+		return new GaiaAdminUiRouteDiagnostic()
+		{
+			PluginId = descriptor.PluginId,
+			PluginDisplayName = descriptor.DisplayName,
+			RepositoryRootPath = repositoryRootPath,
+			PublicBasePath = routePlan.PublicBasePath,
+			ComposeServiceName = routePlan.ComposeServiceName,
+			ServicePort = routePlan.ServicePort,
+			TraefikResourceName = routePlan.TraefikResourceName,
+			RouterRule = routePlan.RouterRule,
+			LocalUrl = CombineLocalUrl(localProxyBaseUrl, routePlan.PublicBasePath),
+			Labels = routePlan.Labels
+		};
 	}
 
 	private static IReadOnlyList<AdminUiDeploymentDiff> BuildAdminUiDeploymentDiffs(IReadOnlyList<AdminUiDeploymentProjection> previousDeployments, IReadOnlyList<AdminUiDeploymentProjection> currentDeployments)
