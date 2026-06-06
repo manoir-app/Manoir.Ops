@@ -88,7 +88,7 @@ public static class DockerCoreServiceCatalog
 	public static IReadOnlyList<DockerSharedServiceStatus> Evaluate(IReadOnlyList<ContainerListResponse> containers, string platformRootPath)
 	{
 		DockerDeploymentPlan plan = CreateDeploymentPlan(platformRootPath);
-		DockerDeploymentServicePlan service = plan.Services.Single();
+		DockerDeploymentServicePlan service = ResolveCoreStatusService(plan);
 		ContainerListResponse container = containers?
 			.FirstOrDefault(candidate => HasContainerName(candidate, service.ContainerName));
 
@@ -113,6 +113,32 @@ public static class DockerCoreServiceCatalog
 	{
 		return container?.Names != null
 			&& container.Names.Any(name => string.Equals(name?.TrimStart('/'), containerName, StringComparison.OrdinalIgnoreCase));
+	}
+
+	private static DockerDeploymentServicePlan ResolveCoreStatusService(DockerDeploymentPlan plan)
+	{
+		if (plan == null)
+			throw new ArgumentNullException(nameof(plan));
+
+		if (plan.Services.Count == 1)
+			return plan.Services[0];
+
+		DockerDeploymentServicePlan[] adminUiCandidates = plan.Services
+			.Where(service => service?.Labels != null && service.Labels.Count > 0)
+			.ToArray();
+		if (adminUiCandidates.Length == 1)
+			return adminUiCandidates[0];
+
+		DockerDeploymentServicePlan namedCoreCandidate = plan.Services.FirstOrDefault(service =>
+			string.Equals(service?.Name, CoreServiceName, StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(service?.ContainerName, "manoir-platform-core", StringComparison.OrdinalIgnoreCase));
+		if (namedCoreCandidate != null)
+			return namedCoreCandidate;
+
+		throw new InvalidOperationException(
+			"The Platform core deployment must expose exactly one status service. "
+			+ "Resolved services: "
+			+ string.Join(", ", plan.Services.Select(service => service?.Name ?? "<null>")));
 	}
 
 	private static int ResolveCoreAdminUiHostPort()
