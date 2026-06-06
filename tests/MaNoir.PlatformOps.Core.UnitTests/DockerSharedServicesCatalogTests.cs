@@ -47,12 +47,17 @@ public sealed class DockerSharedServicesCatalogTests
 
 			Assert.AreEqual("shared-services", plan.PluginId);
 			Assert.AreEqual("shared-services", plan.DeploymentGroup);
-			Assert.AreEqual(5, plan.Services.Count);
-			CollectionAssert.AreEqual(new[] { "mongo", "nats", "mqtt", "redis", "traefik" }, plan.Services.Select(service => service.Name).ToArray());
+			Assert.AreEqual(9, plan.Services.Count);
+			CollectionAssert.AreEqual(new[] { "mongo", "nats", "mqtt", "redis", "traefik", "loki", "tempo", "prometheus", "grafana" }, plan.Services.Select(service => service.Name).ToArray());
+			CollectionAssert.AreEqual(new[] { "mongo", "nats", "mqtt", "redis", "traefik" }, plan.Services.Where(service => service.IsRequiredForMinimumVital).Select(service => service.Name).ToArray());
 			Assert.AreEqual(DockerSharedServicesCatalog.DefaultMongoImage, plan.Services[0].Image);
 			Assert.AreEqual("nats:2.14.0", plan.Services[1].Image);
 			Assert.AreEqual("eclipse-mosquitto:2", plan.Services[2].Image);
 			Assert.AreEqual(DockerSharedServicesCatalog.DefaultTraefikImage, plan.Services[4].Image);
+			Assert.AreEqual(DockerSharedServicesCatalog.DefaultLokiImage, plan.Services[5].Image);
+			Assert.AreEqual(DockerSharedServicesCatalog.DefaultTempoImage, plan.Services[6].Image);
+			Assert.AreEqual(DockerSharedServicesCatalog.DefaultPrometheusImage, plan.Services[7].Image);
+			Assert.AreEqual(DockerSharedServicesCatalog.DefaultGrafanaImage, plan.Services[8].Image);
 			Assert.IsTrue(plan.Services.All(service => service.ImagePullPolicy == DockerImagePullPolicy.Always));
 			CollectionAssert.AreEqual(new[] { "1883:1883" }, plan.Services[2].Ports.ToArray());
 			CollectionAssert.AreEqual(new[] { "80" }, plan.Services[4].Ports.ToArray());
@@ -60,6 +65,10 @@ public sealed class DockerSharedServicesCatalogTests
 			Assert.AreEqual(0, plan.Services[1].Ports.Count);
 			Assert.IsTrue(File.Exists(Path.Combine(sharedServicesRootPath, "mqtt", "config", "mosquitto.conf")));
 			Assert.IsTrue(File.Exists(Path.Combine(sharedServicesRootPath, "traefik", "config", "traefik.yml")));
+			Assert.IsTrue(File.Exists(Path.Combine(sharedServicesRootPath, "loki", "config", "loki.yml")));
+			Assert.IsTrue(File.Exists(Path.Combine(sharedServicesRootPath, "tempo", "config", "tempo.yml")));
+			Assert.IsTrue(File.Exists(Path.Combine(sharedServicesRootPath, "prometheus", "config", "prometheus.yml")));
+			Assert.IsTrue(File.Exists(Path.Combine(sharedServicesRootPath, "grafana", "provisioning", "datasources", "datasources.yml")));
 		}
 		finally
 		{
@@ -182,11 +191,16 @@ public sealed class DockerSharedServicesCatalogTests
 
 		IReadOnlyList<DockerSharedServiceStatus> statuses = DockerSharedServicesCatalog.Evaluate(containers, Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
 
-		Assert.AreEqual(5, statuses.Count);
+		Assert.AreEqual(9, statuses.Count);
+		CollectionAssert.AreEqual(new[] { "mongo", "nats", "mqtt", "redis", "traefik" }, statuses.Where(service => service.IsRequiredForMinimumVital).Select(service => service.ServiceName).ToArray());
 		Assert.IsTrue(statuses.Single(service => service.ServiceName == "mongo").IsRunning);
 		Assert.IsFalse(statuses.Single(service => service.ServiceName == "nats").MatchesExpectedImage);
 		Assert.IsFalse(statuses.Single(service => service.ServiceName == "mqtt").IsPresent);
 		Assert.IsFalse(statuses.Single(service => service.ServiceName == "redis").IsRunning);
 		Assert.IsFalse(statuses.Single(service => service.ServiceName == "traefik").IsPresent);
+		Assert.IsFalse(statuses.Single(service => service.ServiceName == "loki").IsPresent);
+		Assert.IsFalse(statuses.Single(service => service.ServiceName == "tempo").IsPresent);
+		Assert.IsFalse(statuses.Single(service => service.ServiceName == "prometheus").IsPresent);
+		Assert.IsFalse(statuses.Single(service => service.ServiceName == "grafana").IsPresent);
 	}
 }
