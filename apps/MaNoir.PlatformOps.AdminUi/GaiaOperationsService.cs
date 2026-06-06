@@ -29,6 +29,8 @@ public sealed class GaiaOperationsService
 	private IReadOnlyList<string> _lastPluginRepositorySyncMessages = Array.Empty<string>();
 	private IReadOnlyList<string> _lastPluginRepositorySyncErrors = Array.Empty<string>();
 
+	public bool IsMinimumVitalReady => _lastStatus?.HasMinimumVital == true;
+
 	public GaiaOperationsService(GaiaOptions options, ILogger<GaiaOperationsService> logger)
 	{
 		_options = options ?? throw new ArgumentNullException(nameof(options));
