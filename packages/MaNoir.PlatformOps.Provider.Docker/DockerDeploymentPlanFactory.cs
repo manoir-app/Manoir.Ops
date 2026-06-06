@@ -88,9 +88,17 @@ public static class DockerDeploymentPlanFactory
 		PlatformOpsSecretsRuntimeGuard.EnsureConfigured();
 
 		DockerDeploymentPlan plan = Create(descriptor, composeFile);
-		plan.ResolvedSharedEnvironmentVariables = resolveSecretAsync == null
-			? await PluginEnvironmentSecretsResolver.ResolveAsync(descriptor.EnvironmentVariables, cancellationToken)
-			: await PluginEnvironmentSecretsResolver.ResolveAsync(descriptor.EnvironmentVariables, resolveSecretAsync, cancellationToken);
+		if (descriptor.EnvironmentVariables == null || descriptor.EnvironmentVariables.Count == 0)
+		{
+			plan.ResolvedSharedEnvironmentVariables = Array.Empty<PluginResolvedEnvironmentVariable>();
+		}
+		else
+		{
+			plan.ResolvedSharedEnvironmentVariables = resolveSecretAsync == null
+				? await PluginEnvironmentSecretsResolver.ResolveAsync(descriptor.EnvironmentVariables, cancellationToken)
+				: await PluginEnvironmentSecretsResolver.ResolveAsync(descriptor.EnvironmentVariables, resolveSecretAsync, cancellationToken);
+		}
+
 		ApplyResolvedServiceEnvironment(plan);
 		return plan;
 	}
