@@ -22,7 +22,7 @@ plugin:
 catalog:
   contributions:
     - id: sarah.admin.pages
-      kind: AdminUiPage
+      kind: adminui.page
       label:
         fr-FR: Sarah Admin Pages
       adminUi:
@@ -68,7 +68,7 @@ plugin:
 catalog:
   contributions:
     - id: sarah.admin.pages
-      kind: AdminUiPage
+      kind: adminui.page
       label:
         fr-FR: Sarah Admin Pages
       adminUi:

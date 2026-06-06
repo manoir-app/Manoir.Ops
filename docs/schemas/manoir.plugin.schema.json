@@ -346,6 +346,8 @@
         },
         "kind": {
           "enum": [
+            "adminui.page",
+            "integration",
             "AdminUiPage",
             "Integration"
           ]
@@ -381,7 +383,10 @@
           "if": {
             "properties": {
               "kind": {
-                "const": "AdminUiPage"
+                "enum": [
+                  "adminui.page",
+                  "AdminUiPage"
+                ]
               }
             }
           },
@@ -395,7 +400,10 @@
           "if": {
             "properties": {
               "kind": {
-                "const": "Integration"
+                "enum": [
+                  "integration",
+                  "Integration"
+                ]
               }
             }
           },

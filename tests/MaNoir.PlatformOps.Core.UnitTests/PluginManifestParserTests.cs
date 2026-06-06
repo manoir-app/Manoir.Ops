@@ -50,7 +50,7 @@ catalog:
         en-US: Access to Sarah administration pages.
   contributions:
     - id: sarah.admin.pages
-      kind: AdminUiPage
+      kind: adminui.page
       label:
         fr-FR: Sarah Admin Pages
         en-US: Sarah Admin Pages
@@ -111,6 +111,7 @@ deployment:
 		Assert.AreEqual("docs/overview.fr.md", manifest.Documentation.OverviewPath["fr-FR"]);
 		Assert.AreEqual(1, manifest.Dependencies.RequiredPlugins.Count);
 		Assert.AreEqual(2, manifest.Catalog.Contributions.Count);
+    Assert.AreEqual("adminui.page", manifest.Catalog.Contributions[0].Kind);
 		Assert.AreEqual("Read", manifest.Catalog.Contributions[0].AdminUi.RequiredAccessLevel);
     Assert.AreEqual("/admin", manifest.Catalog.Contributions[0].AdminUi.Pages[0].RelativePath);
     Assert.AreEqual("home-automation", manifest.Deployment.Group);
@@ -203,7 +204,7 @@ plugin:
 catalog:
   contributions:
     - id: sarah.admin.pages
-      kind: AdminUiPage
+      kind: adminui.page
       label:
         fr-FR: Sarah Admin Pages
       adminUi:
@@ -218,6 +219,40 @@ catalog:
 "));
 
 		CollectionAssert.Contains((System.Collections.ICollection)exception.Errors, "catalog.contributions[0].adminUi.pages[0] must declare either relativePath or url.");
+	}
+
+	[TestMethod]
+	public void Parse_ShouldAcceptLegacyAdminUiPageContributionKind()
+	{
+		PluginManifest manifest = PluginManifestParser.Parse(@"
+apiVersion: manoir/v1
+kind: PluginManifest
+plugin:
+  pluginId: sarah
+  repoUrl: https://github.com/manoir-app/manoir-plugin-sarah
+  displayName: Sarah Home Agent
+  publisher: MaNoir
+  version: 2.3.1
+  minimumMaNoirVersion: 1.8.0
+catalog:
+  contributions:
+    - id: sarah.admin.pages
+      kind: AdminUiPage
+      label:
+        fr-FR: Sarah Admin Pages
+      adminUi:
+        domain: Sarah
+        accessZoneId: sarah.admin-ui
+        requiredAccessLevel: Read
+        pages:
+          - category: Home
+            name: Dashboard
+            relativePath: /admin
+            labels:
+              fr-FR: Tableau de bord
+");
+
+		Assert.AreEqual("adminui.page", manifest.Catalog.Contributions[0].Kind);
 	}
 
 	[TestMethod]

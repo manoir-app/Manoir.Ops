@@ -9,11 +9,8 @@ namespace MaNoir.PlatformOps.Core;
 
 public static class PluginManifestParser
 {
-	private static readonly HashSet<string> SupportedContributionKinds = new HashSet<string>(StringComparer.Ordinal)
-	{
-		"AdminUiPage",
-		"Integration"
-	};
+	internal const string AdminUiPageContributionKind = "adminui.page";
+	internal const string IntegrationContributionKind = "integration";
 
 	private static readonly HashSet<string> SupportedAccessLevels = new HashSet<string>(StringComparer.Ordinal)
 	{
@@ -178,22 +175,49 @@ public static class PluginManifestParser
 			ValidateLocalizedMap(contribution.Label, prefix + ".label", errors);
 			ValidateLocalizedMap(contribution.Description, prefix + ".description", errors);
 
-			if (!string.IsNullOrWhiteSpace(contribution.Kind) && !SupportedContributionKinds.Contains(contribution.Kind))
+			string normalizedContributionKind = NormalizeContributionKind(contribution.Kind);
+			if (!string.IsNullOrWhiteSpace(contribution.Kind) && normalizedContributionKind == null)
 				errors.Add(prefix + ".kind is not supported.");
 
-			if (string.Equals(contribution.Kind, "AdminUiPage", StringComparison.Ordinal))
+			if (normalizedContributionKind != null)
+				contribution.Kind = normalizedContributionKind;
+
+			if (IsAdminUiPageContributionKind(normalizedContributionKind))
 				ValidateAdminUiContribution(contribution.AdminUi, prefix + ".adminUi", errors);
 
-			if (string.Equals(contribution.Kind, "Integration", StringComparison.Ordinal))
+			if (IsIntegrationContributionKind(normalizedContributionKind))
 				ValidateIntegrationContribution(contribution.Integration, prefix + ".integration", errors);
 		}
+	}
+
+	internal static bool IsAdminUiPageContributionKind(string contributionKind)
+	{
+		return string.Equals(contributionKind, AdminUiPageContributionKind, StringComparison.Ordinal);
+	}
+
+	internal static bool IsIntegrationContributionKind(string contributionKind)
+	{
+		return string.Equals(contributionKind, IntegrationContributionKind, StringComparison.Ordinal);
+	}
+
+	private static string NormalizeContributionKind(string contributionKind)
+	{
+		if (string.IsNullOrWhiteSpace(contributionKind))
+			return null;
+
+		return contributionKind.Trim() switch
+		{
+			"adminui.page" or "AdminUiPage" => AdminUiPageContributionKind,
+			"integration" or "Integration" => IntegrationContributionKind,
+			_ => null
+		};
 	}
 
 	private static void ValidateAdminUiContribution(PluginManifestAdminUiContribution adminUi, string prefix, List<string> errors)
 	{
 		if (adminUi == null)
 		{
-			errors.Add(prefix + " is required for an AdminUiPage contribution.");
+			errors.Add(prefix + " is required for an adminui.page contribution.");
 			return;
 		}
 
@@ -237,7 +261,7 @@ public static class PluginManifestParser
 	{
 		if (integration == null)
 		{
-			errors.Add(prefix + " is required for an Integration contribution.");
+			errors.Add(prefix + " is required for an integration contribution.");
 			return;
 		}
 

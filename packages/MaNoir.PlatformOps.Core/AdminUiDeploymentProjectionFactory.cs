@@ -18,7 +18,7 @@ public static class AdminUiDeploymentProjectionFactory
 			throw new ArgumentException("The manifest and deployment descriptor must target the same plugin.", nameof(descriptor));
 
 		List<AdminUiContributionDeploymentProjection> contributions = manifest.Catalog?.Contributions?
-			.Where(contribution => contribution != null && string.Equals(contribution.Kind, "AdminUiPage", StringComparison.Ordinal) && contribution.AdminUi != null)
+			.Where(contribution => contribution != null && PluginManifestParser.IsAdminUiPageContributionKind(contribution.Kind) && contribution.AdminUi != null)
 			.Select(contribution => new AdminUiContributionDeploymentProjection()
 			{
 				ContributionId = contribution.Id,
