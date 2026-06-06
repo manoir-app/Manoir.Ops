@@ -27,8 +27,8 @@ public static class DockerAutomaticEnvironmentVariables
 		if (IsObservabilityEnabled())
 		{
 			entries.Add(new DockerResolvedEnvironmentEntry() { Name = "MANOIR_OBSERVABILITY_ENABLED", Value = "true" });
-			entries.Add(new DockerResolvedEnvironmentEntry() { Name = "MANOIR_OTEL_TRACES_ENDPOINT", Value = ResolveEnvironmentValue("MANOIR_OTEL_TRACES_ENDPOINT", "http://tempo:4318") });
-			entries.Add(new DockerResolvedEnvironmentEntry() { Name = "MANOIR_OTEL_LOGS_ENDPOINT", Value = ResolveEnvironmentValue("MANOIR_OTEL_LOGS_ENDPOINT", "http://loki:3100/otlp") });
+			entries.Add(new DockerResolvedEnvironmentEntry() { Name = "MANOIR_OTEL_TRACES_ENDPOINT", Value = ResolveEnvironmentValue("MANOIR_OTEL_TRACES_ENDPOINT", "http://tempo:4318/v1/traces") });
+			entries.Add(new DockerResolvedEnvironmentEntry() { Name = "MANOIR_OTEL_LOGS_ENDPOINT", Value = ResolveEnvironmentValue("MANOIR_OTEL_LOGS_ENDPOINT", "http://loki:3100/otlp/v1/logs") });
 			entries.Add(new DockerResolvedEnvironmentEntry() { Name = "MANOIR_PROMETHEUS_METRICS_PATH", Value = ResolveEnvironmentValue("MANOIR_PROMETHEUS_METRICS_PATH", "/metrics") });
 		}
 
