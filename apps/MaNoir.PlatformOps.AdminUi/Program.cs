@@ -3,9 +3,12 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using MaNoir.Core.Observability;
 using MaNoir.PlatformOps.AdminUi;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+builder.AddMaNoirWebObservability("manoir-gaia");
 
 GaiaOptions gaiaOptions = new GaiaOptions();
 builder.Configuration.GetSection("Gaia").Bind(gaiaOptions);
@@ -24,6 +27,7 @@ WebApplication app = builder.Build();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+app.MapMaNoirWebObservability();
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 app.MapGet("/api/ops/gaia/state", async (GaiaOperationsService gaia, CancellationToken cancellationToken) => Results.Ok(await gaia.GetStateAsync(cancellationToken)));

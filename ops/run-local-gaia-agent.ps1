@@ -13,6 +13,9 @@ param(
 	[string]$DockerSocketSource,
 	[string[]]$PluginsRepo,
 	[int]$EnsureIntervalSeconds = 300,
+	[bool]$EnableObservability = $true,
+	[string]$OtelTracesEndpoint = "http://tempo:4318",
+	[string]$OtelLogsEndpoint = "http://loki:3100/otlp",
 	[switch]$ProductionInstance
 )
 
@@ -189,6 +192,13 @@ if ($PluginsRepo -and $PluginsRepo.Count -gt 0) {
 	}
 }
 
+if ($EnableObservability) {
+	$dockerArgs += @("--env", "MANOIR_OBSERVABILITY_ENABLED=true")
+	$dockerArgs += @("--env", "MANOIR_OTEL_TRACES_ENDPOINT=$OtelTracesEndpoint")
+	$dockerArgs += @("--env", "MANOIR_OTEL_LOGS_ENDPOINT=$OtelLogsEndpoint")
+	$dockerArgs += @("--env", "MANOIR_PROMETHEUS_METRICS_PATH=/metrics")
+}
+
 $dockerArgs += $imageReference
 
 Write-Host "Starting '$ContainerName' from '$imageReference' on host OS '$hostOs'."
@@ -218,3 +228,10 @@ Write-Host "Gaia plugin repositories path: $pluginRepositoriesContainerPath"
 Write-Host "MANOIR_PLUGINS_REPO=$($PluginsRepo -join ',')"
 Write-Host "Development instance: $isDevelopmentInstance"
 Write-Host "Docker socket source: $DockerSocketSource"
+Write-Host "Observability enabled: $EnableObservability"
+if ($EnableObservability) {
+	Write-Host "OTLP traces endpoint: $OtelTracesEndpoint"
+	Write-Host "OTLP logs endpoint: $OtelLogsEndpoint"
+	Write-Host "Grafana: http://127.0.0.1:3000"
+	Write-Host "Prometheus: http://127.0.0.1:9090"
+}

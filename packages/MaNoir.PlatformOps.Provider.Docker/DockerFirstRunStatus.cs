@@ -43,21 +43,25 @@ public sealed class DockerFirstRunStatus
 
 	public bool NeedsSharedServicesDeployment => SharedServices.Any(service => !service.IsRunning || !service.MatchesExpectedImage);
 
+	public bool NeedsRequiredSharedServicesDeployment => SharedServices.Any(service => service.IsRequiredForMinimumVital && (!service.IsRunning || !service.MatchesExpectedImage));
+
 	public bool NeedsCoreServicesDeployment => CoreServices.Any(service => !service.IsRunning || !service.MatchesExpectedImage);
 
-	public bool NeedsMinimumVitalDeployment => NeedsSharedServicesDeployment || NeedsCoreServicesDeployment;
+	public bool NeedsMinimumVitalDeployment => NeedsRequiredSharedServicesDeployment || NeedsCoreServicesDeployment;
 
 	public bool HasMinimumVital => IsDockerAvailable
 		&& SharedServices.Count > 0
 		&& CoreServices.Count > 0
 		&& HasAllRequiredPluginsAvailable
-		&& SharedServices.All(service => service.IsRunning && service.MatchesExpectedImage)
+		&& SharedServices.Where(service => service.IsRequiredForMinimumVital).All(service => service.IsRunning && service.MatchesExpectedImage)
 		&& CoreServices.All(service => service.IsRunning && service.MatchesExpectedImage);
 }
 
 public sealed class DockerSharedServiceStatus
 {
 	public string ServiceName { get; set; }
+
+	public bool IsRequiredForMinimumVital { get; set; } = true;
 
 	public string ContainerName { get; set; }
 

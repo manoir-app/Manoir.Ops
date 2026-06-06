@@ -31,6 +31,8 @@ public sealed class DockerDeploymentServicePlan
 {
 	public string Name { get; set; }
 
+	public bool IsRequiredForMinimumVital { get; set; } = true;
+
 	public string Image { get; set; }
 
 	public string BuildContext { get; set; }

@@ -25,8 +25,20 @@ public static class DockerSharedServicesCatalog
 
 	public const string DefaultTraefikImage = "traefik:v3.7";
 
+	public const string DefaultLokiImage = "grafana/loki:3.5.0";
+
+	public const string DefaultTempoImage = "grafana/tempo:2.8.2";
+
+	public const string DefaultPrometheusImage = "prom/prometheus:v3.4.1";
+
+	public const string DefaultGrafanaImage = "grafana/grafana:12.0.1";
+
 	private static readonly string MosquittoConfigurationFileContent = "listener 1883 0.0.0.0\nallow_anonymous true\npersistence false\n";
 	private static readonly string TraefikConfigurationFileContent = "entryPoints:\n  web:\n    address: \":80\"\nproviders:\n  docker:\n    endpoint: \"unix:///var/run/docker.sock\"\n    exposedByDefault: false\n    network: \"manoir\"\n";
+	private static readonly string LokiConfigurationFileContent = "auth_enabled: false\nserver:\n  http_listen_port: 3100\ncommon:\n  path_prefix: /loki\n  replication_factor: 1\n  ring:\n    kvstore:\n      store: inmemory\nschema_config:\n  configs:\n    - from: 2025-01-01\n      store: tsdb\n      object_store: filesystem\n      schema: v13\n      index:\n        prefix: index_\n        period: 24h\nstorage_config:\n  filesystem:\n    chunks_directory: /loki/chunks\n    rules_directory: /loki/rules\nlimits_config:\n  allow_structured_metadata: true\n  volume_enabled: true\npattern_ingester:\n  enabled: true\n";
+	private static readonly string TempoConfigurationFileContent = "server:\n  http_listen_port: 3200\ndistributor:\n  receivers:\n    otlp:\n      protocols:\n        http:\n          endpoint: 0.0.0.0:4318\nstorage:\n  trace:\n    backend: local\n    local:\n      path: /var/tempo/traces\n";
+	private static readonly string PrometheusConfigurationFileContent = "global:\n  scrape_interval: 15s\n  evaluation_interval: 15s\nscrape_configs:\n  - job_name: prometheus\n    static_configs:\n      - targets: ['prometheus:9090']\n  - job_name: manoir-platform-core\n    metrics_path: /metrics\n    static_configs:\n      - targets: ['manoir-platform-core:8080']\n  - job_name: manoir-gaia\n    metrics_path: /metrics\n    static_configs:\n      - targets: ['manoir-agents-gaia:8080']\n";
+	private static readonly string GrafanaDataSourcesConfigurationFileContent = "apiVersion: 1\ndatasources:\n  - name: Prometheus\n    uid: prometheus\n    type: prometheus\n    access: proxy\n    url: http://prometheus:9090\n    isDefault: true\n  - name: Loki\n    uid: loki\n    type: loki\n    access: proxy\n    url: http://loki:3100\n  - name: Tempo\n    uid: tempo\n    type: tempo\n    access: proxy\n    url: http://tempo:3200\n    jsonData:\n      tracesToLogsV2:\n        datasourceUid: loki\n      serviceMap:\n        datasourceUid: prometheus\n";
 
 	public static DockerDeploymentPlan CreateDeploymentPlan(string sharedServicesRootPath, IEnumerable<string> serviceNames = null)
 	{
@@ -34,6 +46,7 @@ public static class DockerSharedServicesCatalog
 		string dockerHostSharedServicesRootPath = ResolveDockerHostSharedServicesRootPath(resolvedRootPath);
 		EnsureMosquittoConfiguration(resolvedRootPath);
 		EnsureTraefikConfiguration(resolvedRootPath);
+		EnsureObservabilityConfiguration(resolvedRootPath);
 		bool isDevelopmentInstance = DockerPlatformRuntimeEnvironment.IsDevelopmentInstance();
 
 		HashSet<string> requestedServiceNames = serviceNames == null
@@ -70,6 +83,7 @@ public static class DockerSharedServicesCatalog
 			statuses.Add(new DockerSharedServiceStatus()
 			{
 				ServiceName = service.Name,
+				IsRequiredForMinimumVital = service.IsRequiredForMinimumVital,
 				ContainerName = ResolveContainerName(service.Name),
 				ExpectedImage = service.Image,
 				CurrentImage = container?.Image,
@@ -129,6 +143,14 @@ public static class DockerSharedServicesCatalog
 		string mqttDataPath = Path.Combine(mqttRootPath, "data");
 		string mqttLogPath = Path.Combine(mqttRootPath, "log");
 		string traefikConfigPath = Path.Combine(sharedServicesRootPath, "traefik", "config", "traefik.yml");
+		string lokiConfigPath = Path.Combine(sharedServicesRootPath, "loki", "config", "loki.yml");
+		string lokiDataPath = Path.Combine(sharedServicesRootPath, "loki", "data");
+		string tempoConfigPath = Path.Combine(sharedServicesRootPath, "tempo", "config", "tempo.yml");
+		string tempoDataPath = Path.Combine(sharedServicesRootPath, "tempo", "data");
+		string prometheusConfigPath = Path.Combine(sharedServicesRootPath, "prometheus", "config", "prometheus.yml");
+		string prometheusDataPath = Path.Combine(sharedServicesRootPath, "prometheus", "data");
+		string grafanaDatasourcesPath = Path.Combine(sharedServicesRootPath, "grafana", "provisioning", "datasources");
+		string grafanaDataPath = Path.Combine(sharedServicesRootPath, "grafana", "data");
 
 		return
 		[
@@ -198,6 +220,80 @@ public static class DockerSharedServicesCatalog
 				],
 				Environment = Array.Empty<DockerComposeEnvironmentEntry>(),
 				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()
+			},
+			new DockerDeploymentServicePlan()
+			{
+				Name = "loki",
+				ContainerName = "manoir-shared-loki",
+				Image = DefaultLokiImage,
+				RestartPolicy = "unless-stopped",
+				ImagePullPolicy = DockerImagePullPolicy.Always,
+				IsRequiredForMinimumVital = false,
+				Ports = isDevelopmentInstance ? ["3100:3100"] : Array.Empty<string>(),
+				Volumes =
+				[
+					lokiConfigPath + ":/etc/loki/config.yml:ro",
+					lokiDataPath + ":/loki"
+				],
+				Environment = Array.Empty<DockerComposeEnvironmentEntry>(),
+				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()
+			},
+			new DockerDeploymentServicePlan()
+			{
+				Name = "tempo",
+				ContainerName = "manoir-shared-tempo",
+				Image = DefaultTempoImage,
+				RestartPolicy = "unless-stopped",
+				ImagePullPolicy = DockerImagePullPolicy.Always,
+				IsRequiredForMinimumVital = false,
+				Ports = isDevelopmentInstance ? ["3200:3200", "4318:4318"] : Array.Empty<string>(),
+				Volumes =
+				[
+					tempoConfigPath + ":/etc/tempo/config.yml:ro",
+					tempoDataPath + ":/var/tempo"
+				],
+				Environment = Array.Empty<DockerComposeEnvironmentEntry>(),
+				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()
+			},
+			new DockerDeploymentServicePlan()
+			{
+				Name = "prometheus",
+				ContainerName = "manoir-shared-prometheus",
+				Image = DefaultPrometheusImage,
+				RestartPolicy = "unless-stopped",
+				ImagePullPolicy = DockerImagePullPolicy.Always,
+				IsRequiredForMinimumVital = false,
+				Ports = isDevelopmentInstance ? ["9090:9090"] : Array.Empty<string>(),
+				Volumes =
+				[
+					prometheusConfigPath + ":/etc/prometheus/prometheus.yml:ro",
+					prometheusDataPath + ":/prometheus"
+				],
+				Environment = Array.Empty<DockerComposeEnvironmentEntry>(),
+				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()
+			},
+			new DockerDeploymentServicePlan()
+			{
+				Name = "grafana",
+				ContainerName = "manoir-shared-grafana",
+				Image = DefaultGrafanaImage,
+				RestartPolicy = "unless-stopped",
+				ImagePullPolicy = DockerImagePullPolicy.Always,
+				IsRequiredForMinimumVital = false,
+				Ports = isDevelopmentInstance ? ["3000:3000"] : Array.Empty<string>(),
+				Volumes =
+				[
+					grafanaDatasourcesPath + ":/etc/grafana/provisioning/datasources:ro",
+					grafanaDataPath + ":/var/lib/grafana"
+				],
+				Environment =
+				[
+					new DockerComposeEnvironmentEntry() { Name = "GF_SECURITY_ADMIN_USER", Value = "admin" },
+					new DockerComposeEnvironmentEntry() { Name = "GF_SECURITY_ADMIN_PASSWORD", Value = "admin" },
+					new DockerComposeEnvironmentEntry() { Name = "GF_AUTH_ANONYMOUS_ENABLED", Value = "true" },
+					new DockerComposeEnvironmentEntry() { Name = "GF_AUTH_ANONYMOUS_ORG_ROLE", Value = "Admin" }
+				],
+				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()
 			}
 		];
 	}
@@ -216,6 +312,7 @@ public static class DockerSharedServicesCatalog
 		return new DockerDeploymentServicePlan()
 		{
 			Name = source.Name,
+			IsRequiredForMinimumVital = source.IsRequiredForMinimumVital,
 			Image = source.Image,
 			BuildContext = source.BuildContext,
 			ContainerName = source.ContainerName,
@@ -277,6 +374,29 @@ public static class DockerSharedServicesCatalog
 		string configurationFilePath = Path.Combine(traefikConfigDirectoryPath, "traefik.yml");
 		if (!File.Exists(configurationFilePath) || !string.Equals(File.ReadAllText(configurationFilePath), TraefikConfigurationFileContent, StringComparison.Ordinal))
 			File.WriteAllText(configurationFilePath, TraefikConfigurationFileContent);
+	}
+
+	private static void EnsureObservabilityConfiguration(string sharedServicesRootPath)
+	{
+		EnsureConfigurationFile(sharedServicesRootPath, Path.Combine("loki", "config"), "loki.yml", LokiConfigurationFileContent);
+		EnsureConfigurationFile(sharedServicesRootPath, Path.Combine("tempo", "config"), "tempo.yml", TempoConfigurationFileContent);
+		EnsureConfigurationFile(sharedServicesRootPath, Path.Combine("prometheus", "config"), "prometheus.yml", PrometheusConfigurationFileContent);
+		EnsureConfigurationFile(sharedServicesRootPath, Path.Combine("grafana", "provisioning", "datasources"), "datasources.yml", GrafanaDataSourcesConfigurationFileContent);
+
+		Directory.CreateDirectory(Path.Combine(sharedServicesRootPath, "loki", "data"));
+		Directory.CreateDirectory(Path.Combine(sharedServicesRootPath, "tempo", "data"));
+		Directory.CreateDirectory(Path.Combine(sharedServicesRootPath, "prometheus", "data"));
+		Directory.CreateDirectory(Path.Combine(sharedServicesRootPath, "grafana", "data"));
+	}
+
+	private static void EnsureConfigurationFile(string sharedServicesRootPath, string relativeDirectoryPath, string fileName, string content)
+	{
+		string directoryPath = Path.Combine(sharedServicesRootPath, relativeDirectoryPath);
+		Directory.CreateDirectory(directoryPath);
+
+		string configurationFilePath = Path.Combine(directoryPath, fileName);
+		if (!File.Exists(configurationFilePath) || !string.Equals(File.ReadAllText(configurationFilePath), content, StringComparison.Ordinal))
+			File.WriteAllText(configurationFilePath, content);
 	}
 
 	private static string ResolveDefaultHomeAutomationRootPath()
