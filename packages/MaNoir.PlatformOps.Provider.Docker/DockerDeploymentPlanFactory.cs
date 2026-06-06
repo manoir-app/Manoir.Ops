@@ -161,11 +161,6 @@ public static class DockerDeploymentPlanFactory
 		int lastColonIndex = imageReference.LastIndexOf(':');
 		if (lastColonIndex <= lastSlashIndex)
 			return imageReference + ":dev";
-
-		string tag = imageReference.Substring(lastColonIndex + 1);
-		if (!string.Equals(tag, "latest", StringComparison.OrdinalIgnoreCase))
-			return imageReference;
-
 		return imageReference.Substring(0, lastColonIndex + 1) + "dev";
 	}
 

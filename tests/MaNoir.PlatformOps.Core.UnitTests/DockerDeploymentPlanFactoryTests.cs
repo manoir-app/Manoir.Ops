@@ -270,7 +270,7 @@ services:
 	}
 
 	[TestMethod]
-	public void Create_ShouldRewriteLatestPluginImagesToDevForDevelopmentInstance()
+	public void Create_ShouldRewriteAllPluginImageTagsToDevForDevelopmentInstance()
 	{
 		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");
 		using EnvironmentVariableScope saltScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.SecretsSaltEnvironmentVariableName, "AAECAwQFBgcICQoLDA0ODxAREhM=");
@@ -292,7 +292,7 @@ services:
 "));
 
 		Assert.AreEqual("ghcr.io/manoir-app/sarah-api:dev", plan.Services[0].Image);
-		Assert.AreEqual("ghcr.io/manoir-app/sarah-worker:2.3.1", plan.Services[1].Image);
+		Assert.AreEqual("ghcr.io/manoir-app/sarah-worker:dev", plan.Services[1].Image);
 		Assert.AreEqual("ghcr.io/manoir-app/sarah-ui:dev", plan.Services[2].Image);
 	}
 }
