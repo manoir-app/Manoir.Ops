@@ -28,7 +28,9 @@ public sealed class DockerCoreServiceCatalogTests
 		Assert.AreEqual("ghcr.io/manoir-app/manoir-core-adminui:latest", plan.Services[0].Image);
 		Assert.AreEqual("true", plan.Services[0].Labels["traefik.enable"]);
 		Assert.AreEqual("PathPrefix(`/platform`)", plan.Services[0].Labels["traefik.http.routers.platform-core-admin-ui.rule"]);
+		Assert.AreEqual("platform-core-admin-ui-strip-prefix", plan.Services[0].Labels["traefik.http.routers.platform-core-admin-ui.middlewares"]);
 		Assert.AreEqual("platform-core-admin-ui", plan.Services[0].Labels["traefik.http.routers.platform-core-admin-ui.service"]);
+		Assert.AreEqual("/platform", plan.Services[0].Labels["traefik.http.middlewares.platform-core-admin-ui-strip-prefix.stripprefix.prefixes"]);
 		Assert.AreEqual("8080", plan.Services[0].Labels["traefik.http.services.platform-core-admin-ui.loadbalancer.server.port"]);
 		Assert.AreEqual(DockerImagePullPolicy.Always, plan.Services[0].ImagePullPolicy);
 		CollectionAssert.AreEqual(new[] { "81:8080" }, plan.Services[0].Ports.ToArray());
@@ -105,6 +107,8 @@ services:
 			Assert.AreEqual("ghcr.io/manoir-app/manoir-core-adminui:latest", plan.Services[0].Image);
 			Assert.AreEqual("true", plan.Services[0].Labels["traefik.enable"]);
 			Assert.AreEqual("PathPrefix(`/platform`)", plan.Services[0].Labels["traefik.http.routers.platform-core-admin-ui.rule"]);
+			Assert.AreEqual("platform-core-admin-ui-strip-prefix", plan.Services[0].Labels["traefik.http.routers.platform-core-admin-ui.middlewares"]);
+			Assert.AreEqual("/platform", plan.Services[0].Labels["traefik.http.middlewares.platform-core-admin-ui-strip-prefix.stripprefix.prefixes"]);
 			Assert.AreEqual(0, plan.Services[0].Ports.Count);
 		}
 		finally

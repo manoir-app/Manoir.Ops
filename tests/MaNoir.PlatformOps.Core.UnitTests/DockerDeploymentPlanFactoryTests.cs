@@ -262,7 +262,9 @@ services:
 		Assert.AreEqual("true", plan.Services[0].Labels["traefik.enable"]);
 		Assert.AreEqual(DockerRuntimeSpecFactory.SharedNetworkName, plan.Services[0].Labels["traefik.docker.network"]);
 		Assert.AreEqual("PathPrefix(`/sarah`)", plan.Services[0].Labels["traefik.http.routers.sarah-api-admin-ui.rule"]);
+		Assert.AreEqual("sarah-api-admin-ui-strip-prefix", plan.Services[0].Labels["traefik.http.routers.sarah-api-admin-ui.middlewares"]);
 		Assert.AreEqual("sarah-api-admin-ui", plan.Services[0].Labels["traefik.http.routers.sarah-api-admin-ui.service"]);
+		Assert.AreEqual("/sarah", plan.Services[0].Labels["traefik.http.middlewares.sarah-api-admin-ui-strip-prefix.stripprefix.prefixes"]);
 		Assert.AreEqual("8080", plan.Services[0].Labels["traefik.http.services.sarah-api-admin-ui.loadbalancer.server.port"]);
 		Assert.AreEqual(0, plan.Services[1].Labels.Count);
 	}

@@ -29,6 +29,7 @@ public static class DockerDeploymentPlanFactory
 		string pathPrefix = descriptor.AdminUiPathPrefix.Trim();
 		string composeServiceName = descriptor.AdminUiServiceName.Trim();
 		string traefikResourceName = CreateTraefikResourceName(descriptor.PluginId, composeServiceName, "admin-ui");
+		string traefikMiddlewareName = CreateTraefikResourceName(descriptor.PluginId, composeServiceName, "admin-ui-strip-prefix");
 		string routerRule = $"PathPrefix(`{pathPrefix}`)";
 
 		return new DockerAdminUiRoutePlan()
@@ -44,7 +45,9 @@ public static class DockerDeploymentPlanFactory
 				["traefik.enable"] = "true",
 				["traefik.docker.network"] = DockerRuntimeSpecFactory.SharedNetworkName,
 				[$"traefik.http.routers.{traefikResourceName}.rule"] = routerRule,
+				[$"traefik.http.routers.{traefikResourceName}.middlewares"] = traefikMiddlewareName,
 				[$"traefik.http.routers.{traefikResourceName}.service"] = traefikResourceName,
+				[$"traefik.http.middlewares.{traefikMiddlewareName}.stripprefix.prefixes"] = pathPrefix,
 				[$"traefik.http.services.{traefikResourceName}.loadbalancer.server.port"] = descriptor.AdminUiServicePort.Value.ToString(CultureInfo.InvariantCulture)
 			}
 		};
