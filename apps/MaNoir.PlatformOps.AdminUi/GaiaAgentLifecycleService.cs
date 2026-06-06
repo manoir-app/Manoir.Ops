@@ -1,23 +1,25 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using MaNoir.Core.Agents;
 using MaNoir.Core.Contracts.Models.Agents;
 using Microsoft.Extensions.Hosting;
+using MaNoir.PlatformOps.Provider.Docker;
 
 namespace MaNoir.PlatformOps.AdminUi;
 
 public sealed class GaiaAgentLifecycleService : BackgroundService
 {
-	private readonly AgentRegistryLogic _agentRegistryLogic;
 	private readonly GaiaOperationsService _gaia;
 	private readonly GaiaAgentRuntime _runtime;
+	private AgentRegistryLogic _agentRegistryLogic;
 	private bool _isRegistered;
+	private bool _isRuntimeEnvironmentConfigured;
 	private bool _hasReportedWaitingForMinimumVital;
 
 	public GaiaAgentLifecycleService(GaiaOperationsService gaia, GaiaAgentRuntime runtime)
 	{
-		_agentRegistryLogic = new AgentRegistryLogic();
 		_gaia = gaia ?? throw new ArgumentNullException(nameof(gaia));
 		_runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
 	}
@@ -53,6 +55,8 @@ public sealed class GaiaAgentLifecycleService : BackgroundService
 
 			_hasReportedWaitingForMinimumVital = false;
 
+			EnsureRuntimeEnvironmentConfigured();
+
 			if (!_isRegistered)
 			{
 				await TryRegisterAsync(AgentState.Ready, "Minimum vital ready", stoppingToken);
@@ -65,7 +69,7 @@ public sealed class GaiaAgentLifecycleService : BackgroundService
 
 	public override async Task StopAsync(CancellationToken cancellationToken)
 	{
-		if (_isRegistered)
+		if (_isRegistered && _agentRegistryLogic != null)
 		{
 			try
 			{
@@ -85,7 +89,7 @@ public sealed class GaiaAgentLifecycleService : BackgroundService
 	{
 		try
 		{
-			RegisteredAgent agent = await _agentRegistryLogic.RegisterAsync(_runtime.CreateRegistrationRequest(state, statusMessage), cancellationToken);
+			RegisteredAgent agent = await GetAgentRegistryLogic().RegisterAsync(_runtime.CreateRegistrationRequest(state, statusMessage), cancellationToken);
 			_isRegistered = true;
 			_runtime.ReportRegistrationSucceeded(agent);
 		}
@@ -100,7 +104,7 @@ public sealed class GaiaAgentLifecycleService : BackgroundService
 	{
 		try
 		{
-			await _agentRegistryLogic.HeartbeatAsync(_runtime.CreateHeartbeatRequest(state, statusMessage), cancellationToken);
+			await GetAgentRegistryLogic().HeartbeatAsync(_runtime.CreateHeartbeatRequest(state, statusMessage), cancellationToken);
 			_runtime.ReportHeartbeat();
 		}
 		catch (Exception ex)
@@ -108,5 +112,48 @@ public sealed class GaiaAgentLifecycleService : BackgroundService
 			_isRegistered = false;
 			_runtime.ReportHeartbeatFailed(ex);
 		}
+	}
+
+	private AgentRegistryLogic GetAgentRegistryLogic()
+	{
+		if (_agentRegistryLogic != null)
+			return _agentRegistryLogic;
+
+		EnsureRuntimeEnvironmentConfigured();
+		_agentRegistryLogic = new AgentRegistryLogic();
+		return _agentRegistryLogic;
+	}
+
+	private void EnsureRuntimeEnvironmentConfigured()
+	{
+		if (_isRuntimeEnvironmentConfigured)
+			return;
+
+		Dictionary<string, string> configuredVariables = new(StringComparer.Ordinal);
+		foreach (KeyValuePair<string, string> pair in DockerAutomaticEnvironmentVariables.CreateVariablesByName(_runtime.AgentId))
+		{
+			string currentValue = Environment.GetEnvironmentVariable(pair.Key);
+			if (string.Equals(currentValue, pair.Value, StringComparison.Ordinal))
+				continue;
+
+			Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+			configuredVariables[pair.Key] = pair.Value;
+		}
+
+		string mongoConnectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTIONSTRING");
+		if (string.IsNullOrWhiteSpace(mongoConnectionString))
+		{
+			string mongoHost = Environment.GetEnvironmentVariable("MONGODB_SERVICE_HOST");
+			string mongoPort = Environment.GetEnvironmentVariable("MONGODB_SERVICE_PORT");
+			if (!string.IsNullOrWhiteSpace(mongoHost) && !string.IsNullOrWhiteSpace(mongoPort))
+			{
+				string resolvedConnectionString = $"mongodb://{mongoHost.Trim()}:{mongoPort.Trim()}";
+				Environment.SetEnvironmentVariable("MONGODB_CONNECTIONSTRING", resolvedConnectionString);
+				configuredVariables["MONGODB_CONNECTIONSTRING"] = resolvedConnectionString;
+			}
+		}
+
+		_isRuntimeEnvironmentConfigured = true;
+		_runtime.ReportEnvironmentConfigured(configuredVariables);
 	}
 }

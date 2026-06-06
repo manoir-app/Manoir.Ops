@@ -79,6 +79,17 @@ public sealed class GaiaAgentRuntime
 		LogInfo($"Agent {AgentId} subscribed to topics: {string.Join(", ", MessageTopics)}.");
 	}
 
+	public void ReportEnvironmentConfigured(IReadOnlyDictionary<string, string> variables)
+	{
+		if (variables == null || variables.Count == 0)
+		{
+			LogInfo($"Agent {AgentId} runtime environment was already configured.");
+			return;
+		}
+
+		LogInfo($"Agent {AgentId} configured runtime environment variables: {string.Join(", ", variables.Keys)}.");
+	}
+
 	public void ReportInterprocessStopped()
 	{
 		LogInfo($"Interprocess listener stopped for agent {AgentId}.");
