@@ -65,7 +65,7 @@ catalog:
         pages:
           - category: Home
             name: Dashboard
-            url: /admin/sarah
+            relativePath: /admin
             labels:
               fr-FR: Tableau de bord
               en-US: Dashboard
@@ -96,6 +96,10 @@ catalog:
 
 deployment:
   group: home-automation
+  adminUi:
+    pathPrefix: /home-automation
+    composeService: admin-ui
+    port: 8080
   artifacts:
     - kind: compose
       path: deploy/docker-compose.yml
@@ -108,11 +112,15 @@ deployment:
 		Assert.AreEqual(1, manifest.Dependencies.RequiredPlugins.Count);
 		Assert.AreEqual(2, manifest.Catalog.Contributions.Count);
 		Assert.AreEqual("Read", manifest.Catalog.Contributions[0].AdminUi.RequiredAccessLevel);
+    Assert.AreEqual("/admin", manifest.Catalog.Contributions[0].AdminUi.Pages[0].RelativePath);
     Assert.AreEqual("home-automation", manifest.Deployment.Group);
+    Assert.AreEqual("/home-automation", manifest.Deployment.AdminUi.PathPrefix);
+    Assert.AreEqual("admin-ui", manifest.Deployment.AdminUi.ComposeService);
+    Assert.AreEqual(8080, manifest.Deployment.AdminUi.Port);
 		Assert.AreEqual("compose", manifest.Deployment.Artifacts[0].Kind);
 	}
 
-  [TestMethod]
+[TestMethod]
   public void Parse_ShouldRejectEmptyDeploymentGroup()
   {
     PluginManifestValidationException exception = Assert.ThrowsException<PluginManifestValidationException>(() => PluginManifestParser.Parse(@"
@@ -129,8 +137,88 @@ deployment:
   group: '   '
 "));
 
-    CollectionAssert.Contains((System.Collections.ICollection)exception.Errors, "deployment.group must not be empty when provided.");
-  }
+		CollectionAssert.Contains((System.Collections.ICollection)exception.Errors, "deployment.group must not be empty when provided.");
+	}
+
+	[TestMethod]
+	public void Parse_ShouldRejectInvalidAdminUiExposure()
+	{
+		PluginManifestValidationException exception = Assert.ThrowsException<PluginManifestValidationException>(() => PluginManifestParser.Parse(@"
+apiVersion: manoir/v1
+kind: PluginManifest
+plugin:
+  pluginId: sarah
+  repoUrl: https://github.com/manoir-app/manoir-plugin-sarah
+  displayName: Sarah Home Agent
+  publisher: MaNoir
+  version: 2.3.1
+  minimumMaNoirVersion: 1.8.0
+deployment:
+  adminUi:
+    pathPrefix: home-automation
+    port: 70000
+"));
+
+		CollectionAssert.Contains((System.Collections.ICollection)exception.Errors, "deployment.adminUi.pathPrefix must start with '/'.");
+		CollectionAssert.Contains((System.Collections.ICollection)exception.Errors, "deployment.adminUi.port must be between 1 and 65535.");
+	}
+
+	[TestMethod]
+	public void Parse_ShouldRejectMismatchedComposeServiceAndLegacyService()
+	{
+		PluginManifestValidationException exception = Assert.ThrowsException<PluginManifestValidationException>(() => PluginManifestParser.Parse(@"
+apiVersion: manoir/v1
+kind: PluginManifest
+plugin:
+  pluginId: sarah
+  repoUrl: https://github.com/manoir-app/manoir-plugin-sarah
+  displayName: Sarah Home Agent
+  publisher: MaNoir
+  version: 2.3.1
+  minimumMaNoirVersion: 1.8.0
+deployment:
+  adminUi:
+    pathPrefix: /home-automation
+    composeService: admin-ui
+    service: web
+    port: 8080
+"));
+
+		CollectionAssert.Contains((System.Collections.ICollection)exception.Errors, "deployment.adminUi.composeService and deployment.adminUi.service must match when both are provided.");
+	}
+
+	[TestMethod]
+	public void Parse_ShouldRejectAdminUiPageWithoutRelativePathOrUrl()
+	{
+		PluginManifestValidationException exception = Assert.ThrowsException<PluginManifestValidationException>(() => PluginManifestParser.Parse(@"
+apiVersion: manoir/v1
+kind: PluginManifest
+plugin:
+  pluginId: sarah
+  repoUrl: https://github.com/manoir-app/manoir-plugin-sarah
+  displayName: Sarah Home Agent
+  publisher: MaNoir
+  version: 2.3.1
+  minimumMaNoirVersion: 1.8.0
+catalog:
+  contributions:
+    - id: sarah.admin.pages
+      kind: AdminUiPage
+      label:
+        fr-FR: Sarah Admin Pages
+      adminUi:
+        domain: Sarah
+        accessZoneId: sarah.admin-ui
+        requiredAccessLevel: Read
+        pages:
+          - category: Home
+            name: Dashboard
+            labels:
+              fr-FR: Tableau de bord
+"));
+
+		CollectionAssert.Contains((System.Collections.ICollection)exception.Errors, "catalog.contributions[0].adminUi.pages[0] must declare either relativePath or url.");
+	}
 
 	[TestMethod]
 	public void Parse_ShouldRejectInvalidApiVersion()

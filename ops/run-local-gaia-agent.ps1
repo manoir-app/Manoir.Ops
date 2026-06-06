@@ -11,6 +11,7 @@ param(
 	[string]$MongoImage,
 	[string]$SharedServicesRootPath,
 	[string]$DockerSocketSource,
+	[string[]]$PluginsRepo,
 	[int]$EnsureIntervalSeconds = 300,
 	[switch]$ProductionInstance
 )
@@ -66,8 +67,6 @@ function Resolve-DefaultHomeAutomationRootPath {
 	throw "Unsupported host operating system '$HostOperatingSystem'."
 }
 
-$scriptDirectoryPath = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repositoryRootPath = (Resolve-Path (Join-Path $scriptDirectoryPath "..")).Path
 $dockerCommand = Get-Command docker -ErrorAction Stop
 
 if ([string]::IsNullOrWhiteSpace($ApiKey)) {
@@ -155,6 +154,13 @@ if ($isDevelopmentInstance) {
 	$dockerArgs += @("--env", "MANOIR_DEVELOPMENT_INSTANCE=true")
 }
 
+if ($PluginsRepo -and $PluginsRepo.Count -gt 0) {
+	$pluginsRepoValue = (($PluginsRepo | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join ',')
+	if (-not [string]::IsNullOrWhiteSpace($pluginsRepoValue)) {
+		$dockerArgs += @("--env", "MANOIR_PLUGINS_REPO=$pluginsRepoValue")
+	}
+}
+
 $dockerArgs += $imageReference
 
 Write-Host "Starting '$ContainerName' from '$imageReference' on host OS '$hostOs'."
@@ -181,5 +187,6 @@ Write-Host "Shared services root: $resolvedSharedServicesRootPath"
 Write-Host "Gaia shared services path: $sharedServicesContainerPath"
 Write-Host "Plugin repositories root: $resolvedPluginRepositoriesRootPath"
 Write-Host "Gaia plugin repositories path: $pluginRepositoriesContainerPath"
+Write-Host "MANOIR_PLUGINS_REPO=$($PluginsRepo -join ',')"
 Write-Host "Development instance: $isDevelopmentInstance"
 Write-Host "Docker socket source: $DockerSocketSource"

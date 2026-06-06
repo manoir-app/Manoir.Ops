@@ -71,7 +71,8 @@ public static class DockerCoreServiceCatalog
 				CurrentImageId = container?.ImageID,
 				IsPresent = container != null,
 				IsRunning = string.Equals(container?.State, "running", StringComparison.OrdinalIgnoreCase),
-				MatchesExpectedImage = string.Equals(container?.Image, service.Image, StringComparison.OrdinalIgnoreCase)
+				MatchesExpectedImage = string.Equals(container?.Image, service.Image, StringComparison.OrdinalIgnoreCase),
+				PublishedPorts = DockerPublishedPortFormatter.Format(container?.Ports)
 			}
 		];
 	}

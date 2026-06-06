@@ -12,6 +12,28 @@ namespace MaNoir.PlatformOps.Core.UnitTests;
 public sealed class DockerSharedServicesCatalogTests
 {
 	[TestMethod]
+	public void GetDataVolumeNames_ShouldReturnNamedDataVolumesForSharedServices()
+	{
+		IReadOnlyList<string> volumeNames = DockerSharedServicesCatalog.GetDataVolumeNames();
+
+		Assert.AreEqual(2, volumeNames.Count);
+		CollectionAssert.Contains(volumeNames.ToArray(), "manoir-shared-mongo");
+		CollectionAssert.Contains(volumeNames.ToArray(), "manoir-shared-redis");
+	}
+
+	[TestMethod]
+	public void GetDataVolumeNames_ShouldNotContainBindMountSources()
+	{
+		IReadOnlyList<string> volumeNames = DockerSharedServicesCatalog.GetDataVolumeNames();
+
+		foreach (string volumeName in volumeNames)
+		{
+			Assert.IsFalse(volumeName.Contains('/'), "Volume name should not be a path: " + volumeName);
+			Assert.IsFalse(volumeName.Contains('\\'), "Volume name should not be a path: " + volumeName);
+		}
+	}
+
+	[TestMethod]
 	public void CreateDeploymentPlan_ShouldProjectRequiredSharedServicesAndMosquittoConfig()
 	{
 		string sharedServicesRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
@@ -25,16 +47,19 @@ public sealed class DockerSharedServicesCatalogTests
 
 			Assert.AreEqual("shared-services", plan.PluginId);
 			Assert.AreEqual("shared-services", plan.DeploymentGroup);
-			Assert.AreEqual(4, plan.Services.Count);
-			CollectionAssert.AreEqual(new[] { "mongo", "nats", "mqtt", "redis" }, plan.Services.Select(service => service.Name).ToArray());
+			Assert.AreEqual(5, plan.Services.Count);
+			CollectionAssert.AreEqual(new[] { "mongo", "nats", "mqtt", "redis", "traefik" }, plan.Services.Select(service => service.Name).ToArray());
 			Assert.AreEqual(DockerSharedServicesCatalog.DefaultMongoImage, plan.Services[0].Image);
 			Assert.AreEqual("nats:2.14.0", plan.Services[1].Image);
 			Assert.AreEqual("eclipse-mosquitto:2", plan.Services[2].Image);
-			Assert.IsTrue(plan.Services.All(service => service.ImagePullPolicy == DockerImagePullPolicy.IfNotPresent));
+			Assert.AreEqual(DockerSharedServicesCatalog.DefaultTraefikImage, plan.Services[4].Image);
+			Assert.IsTrue(plan.Services.All(service => service.ImagePullPolicy == DockerImagePullPolicy.Always));
 			CollectionAssert.AreEqual(new[] { "1883:1883" }, plan.Services[2].Ports.ToArray());
+			CollectionAssert.AreEqual(new[] { "80" }, plan.Services[4].Ports.ToArray());
 			Assert.AreEqual(0, plan.Services[0].Ports.Count);
 			Assert.AreEqual(0, plan.Services[1].Ports.Count);
 			Assert.IsTrue(File.Exists(Path.Combine(sharedServicesRootPath, "mqtt", "config", "mosquitto.conf")));
+			Assert.IsTrue(File.Exists(Path.Combine(sharedServicesRootPath, "traefik", "config", "traefik.yml")));
 		}
 		finally
 		{
@@ -58,6 +83,7 @@ public sealed class DockerSharedServicesCatalogTests
 			CollectionAssert.AreEqual(new[] { "27017:27017" }, plan.Services.Single(service => service.Name == "mongo").Ports.ToArray());
 			CollectionAssert.AreEqual(new[] { "4222:4222" }, plan.Services.Single(service => service.Name == "nats").Ports.ToArray());
 			CollectionAssert.AreEqual(new[] { "1883:1883" }, plan.Services.Single(service => service.Name == "mqtt").Ports.ToArray());
+			CollectionAssert.AreEqual(new[] { "80" }, plan.Services.Single(service => service.Name == "traefik").Ports.ToArray());
 		}
 		finally
 		{
@@ -156,10 +182,11 @@ public sealed class DockerSharedServicesCatalogTests
 
 		IReadOnlyList<DockerSharedServiceStatus> statuses = DockerSharedServicesCatalog.Evaluate(containers, Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
 
-		Assert.AreEqual(4, statuses.Count);
+		Assert.AreEqual(5, statuses.Count);
 		Assert.IsTrue(statuses.Single(service => service.ServiceName == "mongo").IsRunning);
 		Assert.IsFalse(statuses.Single(service => service.ServiceName == "nats").MatchesExpectedImage);
 		Assert.IsFalse(statuses.Single(service => service.ServiceName == "mqtt").IsPresent);
 		Assert.IsFalse(statuses.Single(service => service.ServiceName == "redis").IsRunning);
+		Assert.IsFalse(statuses.Single(service => service.ServiceName == "traefik").IsPresent);
 	}
 }

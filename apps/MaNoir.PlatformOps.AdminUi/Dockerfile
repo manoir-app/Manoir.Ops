@@ -21,5 +21,9 @@ WORKDIR /app
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 EXPOSE 8080
 
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends git ca-certificates \
+	&& rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "MaNoir.PlatformOps.AdminUi.dll"]

@@ -58,6 +58,11 @@ public static class PluginDeploymentDescriptorFactory
 			Version = manifest.Plugin.Version,
 			MinimumMaNoirVersion = manifest.Plugin.MinimumMaNoirVersion,
 			DeploymentGroup = manifest.Deployment?.Group,
+			AdminUiPathPrefix = manifest.Deployment?.AdminUi?.PathPrefix,
+			AdminUiServiceName = string.IsNullOrWhiteSpace(manifest.Deployment?.AdminUi?.ComposeService)
+				? manifest.Deployment?.AdminUi?.Service
+				: manifest.Deployment?.AdminUi?.ComposeService,
+			AdminUiServicePort = manifest.Deployment?.AdminUi?.Port,
 			ComposeArtifactPath = composeArtifact?.Path,
 			EnvironmentTemplatePath = environmentArtifact?.Path,
 			EnvironmentVariables = environmentTemplate?.Variables ?? Array.Empty<PluginEnvironmentVariable>()

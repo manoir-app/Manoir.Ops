@@ -132,6 +132,39 @@
     .btn-primary { background: var(--accent); color: #fff9f1; }
     .btn-primary:hover { background: var(--accent-dark); }
     .btn-secondary { background: rgba(31, 41, 51, 0.08); color: var(--ink); }
+    .btn-danger { background: var(--bad); color: #fff; }
+    .btn-danger:hover { background: #7a2020; }
+
+    .reset-warning {
+      margin-top: 12px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: rgba(155, 44, 44, 0.08);
+      border: 1px solid rgba(155, 44, 44, 0.22);
+      color: var(--bad);
+      font-size: 13px;
+      line-height: 1.5;
+      display: none;
+    }
+
+    .reset-warning.visible { display: block; }
+
+    .reset-warning strong { display: block; margin-bottom: 4px; }
+
+    .reset-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .reset-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
 
     .grid {
       display: grid;
@@ -141,6 +174,7 @@
 
     .panel { padding: 22px; }
     .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
     .span-8 { grid-column: span 8; }
     .span-12 { grid-column: span 12; }
 
@@ -215,6 +249,12 @@
     .badge.warn { background: rgba(163, 107, 22, 0.14); color: var(--warn); }
     .badge.bad { background: rgba(155, 44, 44, 0.14); color: var(--bad); }
 
+    .route-label {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px dashed rgba(31, 41, 51, 0.12);
+    }
+
     .list {
       margin: 0;
       padding-left: 18px;
@@ -232,9 +272,49 @@
       font-style: italic;
     }
 
+    .repo-editor {
+      width: 100%;
+      min-height: 132px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px 16px;
+      font: inherit;
+      background: var(--panel-strong);
+      color: var(--ink);
+    }
+
+    .repo-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .repo-meta {
+      margin: 12px 0 18px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .repo-list {
+      margin-top: 18px;
+    }
+
+    .repo-meta strong {
+      color: var(--ink);
+    }
+
+    .hint {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
     @media (max-width: 900px) {
       .hero, .grid { grid-template-columns: 1fr; }
-      .span-4, .span-8, .span-12 { grid-column: span 1; }
+      .span-4, .span-6, .span-8, .span-12 { grid-column: span 1; }
     }
   </style>
 </head>
@@ -250,7 +330,20 @@
         <div class="actions">
           <button id="refreshButton" class="btn-secondary">Rafraîchir l'état</button>
           <button id="ensureButton" class="btn-primary">Assurer le minimum vital</button>
-          <button id="refreshPluginsButton" class="btn-secondary">Refresh & restart all plugins</button>
+          <button id="refreshPluginsButton" class="btn-secondary">Refresh &amp; restart all plugins</button>
+          <button id="resetButton" class="btn-danger">Réinitialiser les shared services</button>
+        </div>
+        <div id="resetWarning" class="reset-warning">
+          <strong>⚠ Attention — opération destructrice</strong>
+          Cette action arrête et supprime les conteneurs des shared services (mongo, nats, mqtt, redis), puis les redéploie depuis zéro.
+          Cochez l'option ci-dessous pour <strong>effacer également les données persistantes</strong> (volumes Docker).
+          <label class="reset-toggle">
+            <input type="checkbox" id="wipeDataCheckbox"> Supprimer les données (volumes Docker)
+          </label>
+          <div class="reset-actions">
+            <button id="confirmResetButton" class="btn-danger">Confirmer la réinitialisation</button>
+            <button id="cancelResetButton" class="btn-secondary">Annuler</button>
+          </div>
         </div>
       </article>
       <aside class="card hero-side">
@@ -300,6 +393,28 @@
       </article>
 
       <article class="card panel span-6">
+        <h2>Plugins requis</h2>
+        <ul id="requiredPlugins" class="list"></ul>
+      </article>
+
+      <article class="card panel span-12">
+        <h2>Repos de plugins</h2>
+        <div id="repoMeta" class="repo-meta">Chargement...</div>
+        <textarea id="repoEditor" class="repo-editor" spellcheck="false" placeholder="https://github.com/manoir-app/Manoir.PluginCatalog"></textarea>
+        <div class="repo-toolbar">
+          <button id="saveReposButton" class="btn-primary">Enregistrer la liste</button>
+          <button id="resyncReposButton" class="btn-secondary">Forcer une resynchro</button>
+        </div>
+        <div class="hint">Une URL par ligne. Si la liste sauvegardée est vide, Gaia revient à la variable d'environnement MANOIR_PLUGINS_REPO ou au dépôt par défaut.</div>
+        <div id="repoList" class="service-list repo-list"></div>
+      </article>
+
+      <article class="card panel span-12">
+        <h2>Routage AdminUi</h2>
+        <div id="routeList" class="service-list"></div>
+      </article>
+
+      <article class="card panel span-12">
         <h2>Journal Gaia</h2>
         <ul id="gaiaLog" class="list"></ul>
       </article>
@@ -310,6 +425,13 @@
     const refreshButton = document.getElementById('refreshButton');
     const ensureButton = document.getElementById('ensureButton');
     const refreshPluginsButton = document.getElementById('refreshPluginsButton');
+    const resetButton = document.getElementById('resetButton');
+    const confirmResetButton = document.getElementById('confirmResetButton');
+    const cancelResetButton = document.getElementById('cancelResetButton');
+    const saveReposButton = document.getElementById('saveReposButton');
+    const resyncReposButton = document.getElementById('resyncReposButton');
+    const resetWarning = document.getElementById('resetWarning');
+    const wipeDataCheckbox = document.getElementById('wipeDataCheckbox');
     const runtimeDot = document.getElementById('runtimeDot');
     const runtimeText = document.getElementById('runtimeText');
     const lastInspection = document.getElementById('lastInspection');
@@ -319,11 +441,21 @@
     const dockerVersion = document.getElementById('dockerVersion');
     const environmentState = document.getElementById('environmentState');
     const environmentErrors = document.getElementById('environmentErrors');
+    const requiredPlugins = document.getElementById('requiredPlugins');
     const serviceList = document.getElementById('serviceList');
+    const routeList = document.getElementById('routeList');
     const gaiaLog = document.getElementById('gaiaLog');
+    const repoMeta = document.getElementById('repoMeta');
+    const repoEditor = document.getElementById('repoEditor');
+    const repoList = document.getElementById('repoList');
 
-    async function callApi(url, method) {
-      const response = await fetch(url, { method });
+    async function callApi(url, method, body) {
+      const options = { method };
+      if (body !== undefined) {
+        options.headers = { 'Content-Type': 'application/json' };
+        options.body = JSON.stringify(body);
+      }
+      const response = await fetch(url, options);
       if (!response.ok) {
         const text = await response.text();
         throw new Error(text || 'La requête a échoué.');
@@ -341,9 +473,68 @@
       refreshButton.disabled = isBusy;
       ensureButton.disabled = isBusy;
       refreshPluginsButton.disabled = isBusy;
+      resetButton.disabled = isBusy;
+      confirmResetButton.disabled = isBusy;
+      saveReposButton.disabled = isBusy;
+      resyncReposButton.disabled = isBusy;
     }
 
-    function renderState(state) {
+    function renderPluginRepositories(snapshot, state) {
+      const minimumVitalReady = !!state?.lastStatus?.hasMinimumVital;
+      const source = snapshot?.configurationSource || '-';
+      const lastSync = formatDate(snapshot?.lastSynchronizedUtc);
+      const repoRoot = snapshot?.pluginRepositoriesRootPath || '-';
+      const managedRoot = snapshot?.managedRepositoriesRootPath || '-';
+      const repoCount = snapshot?.configuredRepositoryUrls?.length || 0;
+
+      repoMeta.innerHTML = `
+        <div><strong>Source active:</strong> ${source}</div>
+        <div><strong>Dernière synchro:</strong> ${lastSync}</div>
+        <div><strong>Catalogue plugins:</strong> ${snapshot?.isPluginCatalogEmpty ? 'vide' : 'présent'}</div>
+        <div><strong>Repos configurés:</strong> ${repoCount}</div>
+        <div><strong>Racine plugins:</strong> <span class="mono">${repoRoot}</span></div>
+        <div><strong>Racine gérée par Gaia:</strong> <span class="mono">${managedRoot}</span></div>
+        <div><strong>Minimum vital:</strong> ${minimumVitalReady ? 'déjà installé' : 'pas encore installé'}</div>`;
+
+      repoEditor.value = (snapshot?.configuredRepositoryUrls || []).join('\n');
+
+      repoList.innerHTML = '';
+      if (!snapshot?.repositories?.length) {
+        repoList.innerHTML = '<div class="empty">Aucun dépôt configuré.</div>';
+        return;
+      }
+
+      snapshot.repositories.forEach(repository => {
+        const badgeClass = repository.exists ? 'badge' : 'badge warn';
+        const badgeText = repository.exists ? 'Synchronisé' : 'À récupérer';
+        const card = document.createElement('article');
+        card.className = 'service';
+        card.innerHTML = `
+          <div>
+            <h3>${repository.repositoryUrl}</h3>
+            <div class="service-meta mono">Répertoire: ${repository.localPath || '-'}</div>
+            <div class="service-meta mono">Nom local: ${repository.localDirectoryName || '-'}</div>
+            <div class="service-meta mono">Gestion Gaia: ${repository.isManaged ? 'oui' : 'non'}</div>
+          </div>
+          <div class="${badgeClass}">${badgeText}</div>`;
+        repoList.appendChild(card);
+      });
+    }
+
+    function renderDashboard(state, routeDiagnostics, repoSnapshot) {
+      renderState(state, routeDiagnostics);
+      renderPluginRepositories(repoSnapshot, state);
+    }
+
+    async function fetchDashboardData() {
+      return Promise.all([
+        callApi('/api/ops/gaia/state', 'GET'),
+        callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET'),
+        callApi('/api/ops/gaia/plugin-repositories', 'GET')
+      ]);
+    }
+
+    function renderState(state, routeDiagnostics) {
       const status = state?.lastStatus;
       const dockerOk = !!status?.isDockerAvailable;
       const envOk = (status?.environmentErrors?.length || 0) === 0;
@@ -375,6 +566,21 @@
         });
       }
 
+      requiredPlugins.innerHTML = '';
+      const configuredRequiredPlugins = state?.options?.requiredPluginIds || [];
+      if (!configuredRequiredPlugins.length) {
+        requiredPlugins.innerHTML = '<li class="empty">Aucun plugin requis configuré.</li>';
+      } else {
+        const missingRequiredPlugins = new Set(status?.missingRequiredPluginIds || []);
+        configuredRequiredPlugins.forEach(pluginId => {
+          const item = document.createElement('li');
+          item.textContent = missingRequiredPlugins.has(pluginId)
+            ? `${pluginId} — manquant dans le catalogue local d\'installation`
+            : `${pluginId} — disponible`;
+          requiredPlugins.appendChild(item);
+        });
+      }
+
       serviceList.innerHTML = '';
       const groupedServices = [];
       (status?.coreServices || []).forEach(service => groupedServices.push({ service, group: 'core' }));
@@ -386,6 +592,9 @@
 
         const card = document.createElement('article');
         card.className = 'service';
+        const publishedPortsLine = service.publishedPorts?.length
+          ? `<div class="service-meta mono">Ports publiés: ${service.publishedPorts.join(', ')}</div>`
+          : '';
         card.innerHTML = `
           <div>
             <h3>${service.serviceName}</h3>
@@ -393,14 +602,55 @@
             <div class="service-meta mono">Container: ${service.containerName}</div>
             <div class="service-meta mono">Image attendue: ${service.expectedImage}</div>
             <div class="service-meta mono">Image courante: ${service.currentImage || '-'}</div>
+            ${publishedPortsLine}
           </div>
           <div class="${badgeClass}">${badgeText}</div>`;
         serviceList.appendChild(card);
       });
 
+      routeList.innerHTML = '';
+      if (!routeDiagnostics?.length) {
+        routeList.innerHTML = '<div class="empty">Aucune route AdminUi calculée pour l’instant.</div>';
+      } else {
+        routeDiagnostics.forEach(route => {
+          const isError = !!route.error;
+          const badgeClass = isError ? 'badge bad' : route.localUrl ? 'badge' : 'badge warn';
+          const badgeText = isError ? 'Erreur' : route.localUrl ? 'Routable' : 'Calculé';
+          const labelsHtml = isError
+            ? ''
+            : Object.entries(route.labels || {}).map(([key, value]) => `<div class="service-meta mono route-label">${key}: ${value}</div>`).join('');
+
+          const card = document.createElement('article');
+          card.className = 'service';
+          card.innerHTML = isError
+            ? `
+              <div>
+                <h3>${route.repositoryRootPath || 'Plugin'}</h3>
+                <div class="service-meta mono">Erreur: ${route.error}</div>
+              </div>
+              <div class="${badgeClass}">${badgeText}</div>`
+            : `
+              <div>
+                <h3>${route.pluginDisplayName || route.pluginId}</h3>
+                <div class="service-meta mono">Plugin: ${route.pluginId}</div>
+                <div class="service-meta mono">Path prefix: ${route.publicBasePath}</div>
+                <div class="service-meta mono">Service compose: ${route.composeServiceName}</div>
+                <div class="service-meta mono">Port container: ${route.servicePort}</div>
+                <div class="service-meta mono">Router rule: ${route.routerRule}</div>
+                <div class="service-meta mono">Ressource Traefik: ${route.traefikResourceName}</div>
+                <div class="service-meta mono">URL locale: ${route.localUrl || 'Traefik actif mais port local encore indisponible'}</div>
+                ${labelsHtml}
+              </div>
+              <div class="${badgeClass}">${badgeText}</div>`;
+          routeList.appendChild(card);
+        });
+      }
+
       gaiaLog.innerHTML = '';
       const logLines = [];
       if (state?.lastError) logLines.push(state.lastError);
+      if (status?.removedSharedServices?.length) logLines.push('Conteneurs supprimés: ' + status.removedSharedServices.join(', '));
+      if (status?.removedDataVolumes?.length) logLines.push('Volumes supprimés: ' + status.removedDataVolumes.join(', '));
       if (status?.deployedSharedServices?.length) logLines.push('Shared services déployés: ' + status.deployedSharedServices.join(', '));
       if (status?.deployedCoreServices?.length) logLines.push('Core déployé: ' + status.deployedCoreServices.join(', '));
       if (status?.deployedPlugins?.length) logLines.push('Plugins redéployés: ' + status.deployedPlugins.join(', '));
@@ -418,8 +668,8 @@
     async function refreshState() {
       setBusy(true);
       try {
-        const state = await callApi('/api/ops/gaia/state', 'GET');
-        renderState(state);
+        const [state, routeDiagnostics, repoSnapshot] = await fetchDashboardData();
+        renderDashboard(state, routeDiagnostics, repoSnapshot);
       } catch (error) {
         gaiaLog.innerHTML = '<li>' + error.message + '</li>';
       } finally {
@@ -431,7 +681,11 @@
       setBusy(true);
       try {
         const state = await callApi('/api/ops/gaia/ensure-minimum-vital', 'POST');
-        renderState(state);
+        const [routeDiagnostics, repoSnapshot] = await Promise.all([
+          callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET'),
+          callApi('/api/ops/gaia/plugin-repositories', 'GET')
+        ]);
+        renderDashboard(state, routeDiagnostics, repoSnapshot);
       } catch (error) {
         gaiaLog.innerHTML = '<li>' + error.message + '</li>';
       } finally {
@@ -440,20 +694,95 @@
     }
 
     async function refreshAndRestartAllPlugins() {
-    setBusy(true);
-    try {
-      const state = await callApi('/api/ops/gaia/refresh-and-restart-all-plugins', 'POST');
-      renderState(state);
-    } catch (error) {
-      gaiaLog.innerHTML = '<li>' + error.message + '</li>';
-    } finally {
-      setBusy(false);
+      setBusy(true);
+      try {
+        const state = await callApi('/api/ops/gaia/refresh-and-restart-all-plugins', 'POST');
+        const [routeDiagnostics, repoSnapshot] = await Promise.all([
+          callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET'),
+          callApi('/api/ops/gaia/plugin-repositories', 'GET')
+        ]);
+        renderDashboard(state, routeDiagnostics, repoSnapshot);
+      } catch (error) {
+        gaiaLog.innerHTML = '<li>' + error.message + '</li>';
+      } finally {
+        setBusy(false);
+      }
     }
-  }
+
+    async function savePluginRepositories() {
+      setBusy(true);
+      try {
+        const repositoryUrls = repoEditor.value
+          .split(/\r?\n/)
+          .map(value => value.trim())
+          .filter(Boolean);
+
+        const repoSnapshot = await callApi('/api/ops/gaia/plugin-repositories', 'POST', { repositoryUrls });
+        const [state, routeDiagnostics] = await Promise.all([
+          callApi('/api/ops/gaia/state', 'GET'),
+          callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET')
+        ]);
+        renderDashboard(state, routeDiagnostics, repoSnapshot);
+      } catch (error) {
+        gaiaLog.innerHTML = '<li>' + error.message + '</li>';
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function resyncPluginRepositories() {
+      setBusy(true);
+      try {
+        const repoSnapshot = await callApi('/api/ops/gaia/plugin-repositories/resync', 'POST');
+        const [state, routeDiagnostics] = await Promise.all([
+          callApi('/api/ops/gaia/state', 'GET'),
+          callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET')
+        ]);
+        renderDashboard(state, routeDiagnostics, repoSnapshot);
+      } catch (error) {
+        gaiaLog.innerHTML = '<li>' + error.message + '</li>';
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function showResetWarning() {
+      resetWarning.classList.add('visible');
+      wipeDataCheckbox.checked = false;
+      resetButton.disabled = true;
+    }
+
+    function hideResetWarning() {
+      resetWarning.classList.remove('visible');
+      resetButton.disabled = false;
+    }
+
+    async function confirmReset() {
+      hideResetWarning();
+      setBusy(true);
+      try {
+        const wipeData = wipeDataCheckbox.checked;
+        const state = await callApi('/api/ops/gaia/reset-shared-services', 'POST', { wipeData });
+        const [routeDiagnostics, repoSnapshot] = await Promise.all([
+          callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET'),
+          callApi('/api/ops/gaia/plugin-repositories', 'GET')
+        ]);
+        renderDashboard(state, routeDiagnostics, repoSnapshot);
+      } catch (error) {
+        gaiaLog.innerHTML = '<li>' + error.message + '</li>';
+      } finally {
+        setBusy(false);
+      }
+    }
 
     refreshButton.addEventListener('click', refreshState);
     ensureButton.addEventListener('click', ensureSharedServices);
     refreshPluginsButton.addEventListener('click', refreshAndRestartAllPlugins);
+    saveReposButton.addEventListener('click', savePluginRepositories);
+    resyncReposButton.addEventListener('click', resyncPluginRepositories);
+    resetButton.addEventListener('click', showResetWarning);
+    confirmResetButton.addEventListener('click', confirmReset);
+    cancelResetButton.addEventListener('click', hideResetWarning);
     refreshState();
   </script>
 </body>

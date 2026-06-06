@@ -22,6 +22,7 @@ public sealed class GaiaHostedService : BackgroundService
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		_logger.LogInformation("Gaia hosted service started. AutoEnsureSharedServicesOnStartup={AutoEnsureSharedServicesOnStartup}, EnsureIntervalSeconds={EnsureIntervalSeconds}.", _options.AutoEnsureSharedServicesOnStartup, _options.EnsureIntervalSeconds);
+		await InitializePluginRepositoriesAsync(stoppingToken);
 
 		if (_options.AutoEnsureSharedServicesOnStartup)
 			await RunEnsureAsync(stoppingToken);
@@ -56,6 +57,18 @@ public sealed class GaiaHostedService : BackgroundService
 		catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
 		{
 			_logger.LogError(exception, "Gaia ensure cycle failed.");
+		}
+	}
+
+	private async Task InitializePluginRepositoriesAsync(CancellationToken cancellationToken)
+	{
+		try
+		{
+			await _gaia.InitializePluginRepositoriesAsync(cancellationToken);
+		}
+		catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+		{
+			_logger.LogError(exception, "Gaia plugin repository initialization failed.");
 		}
 	}
 }

@@ -29,3 +29,47 @@ The local Gaia runner now maps a persistent home-automation root into the contai
 - Windows host: %ProgramData%/MaNoir/home-automation mounted to /home-automation.
 
 Shared services live under the shared-services child folder of that root.
+
+Gaia also manages plugin source repositories under the plugins child folder of that same root:
+
+- default repository list: https://github.com/manoir-app/Manoir.PluginCatalog
+- environment override: MANOIR_PLUGINS_REPO as a comma-separated list of Git URLs
+- local runner override: ./ops/run-local-gaia-agent.ps1 -PluginsRepo <url1>,<url2>
+- managed clones are synchronized under plugins/_managed so manual local plugin folders can coexist
+- on startup, Gaia synchronizes the configured repositories when the local plugin catalog is still empty
+- the Ops Admin UI now exposes an API and buttons to inspect, edit, persist, and force-resync that repository list
+
+## Admin UI Exposure Model
+
+Plugin manifests can now declare how an Admin UI is meant to be exposed behind a shared reverse proxy.
+
+The deployment section accepts an optional adminUi block:
+
+```yaml
+deployment:
+	group: home-automation
+	adminUi:
+		pathPrefix: /home-automation
+		composeService: admin-ui
+		port: 8080
+	artifacts:
+		- kind: compose
+			path: deploy/docker-compose.yml
+		- kind: env-template
+			path: deploy/.env.template
+```
+
+Current meaning:
+
+- pathPrefix: public base path to expose behind the shared entrypoint, for example /platform or /home-automation;
+- composeService: service name inside the plugin deployment that should receive Admin UI traffic;
+- port: container port to target for that service.
+
+Gaia now turns that contract into a local shared Traefik runtime:
+
+- domain repositories still own their Admin UI pages and contributions;
+- Gaia / PlatformOps owns the deployed base URL and reverse-proxy mapping;
+- Gaia deploys a shared Traefik service on the manoir Docker network;
+- plugin AdminUi routes are derived automatically from pathPrefix + composeService + port.
+
+The plugin manifest still does not choose host ports, Traefik entrypoints, or other local exposure policy. Gaia keeps ownership of those runtime decisions.

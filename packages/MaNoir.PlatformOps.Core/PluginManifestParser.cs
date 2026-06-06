@@ -28,6 +28,9 @@ public static class PluginManifestParser
 		"env-template"
 	};
 
+	private const int MinimumServicePort = 1;
+	private const int MaximumServicePort = 65535;
+
 	public static PluginManifest Parse(string yamlText)
 	{
 		if (string.IsNullOrWhiteSpace(yamlText))
@@ -220,7 +223,12 @@ public static class PluginManifestParser
 
 			RequireValue(page.Category, pagePrefix + ".category", errors);
 			RequireValue(page.Name, pagePrefix + ".name", errors);
-			RequireValue(page.Url, pagePrefix + ".url", errors);
+			if (string.IsNullOrWhiteSpace(page.RelativePath) && string.IsNullOrWhiteSpace(page.Url))
+				errors.Add(pagePrefix + " must declare either relativePath or url.");
+
+			if (!string.IsNullOrWhiteSpace(page.RelativePath) && !page.RelativePath.StartsWith("/", StringComparison.Ordinal))
+				errors.Add(pagePrefix + ".relativePath must start with '/'.");
+
 			ValidateLocalizedMap(page.Labels, pagePrefix + ".labels", errors);
 		}
 	}
@@ -265,6 +273,8 @@ public static class PluginManifestParser
 		if (deployment.Group != null && string.IsNullOrWhiteSpace(deployment.Group))
 			errors.Add("deployment.group must not be empty when provided.");
 
+		ValidateAdminUiExposure(deployment.AdminUi, errors);
+
 		if (deployment.Artifacts == null)
 			return;
 
@@ -286,6 +296,26 @@ public static class PluginManifestParser
 			if (!string.IsNullOrWhiteSpace(artifact.Kind) && !SupportedArtifactKinds.Contains(artifact.Kind))
 				errors.Add(prefix + ".kind is not supported.");
 		}
+	}
+
+	private static void ValidateAdminUiExposure(PluginManifestAdminUiExposure adminUi, List<string> errors)
+	{
+		if (adminUi == null)
+			return;
+
+		RequireValue(adminUi.PathPrefix, "deployment.adminUi.pathPrefix", errors);
+
+		if (!string.IsNullOrWhiteSpace(adminUi.ComposeService) && !string.IsNullOrWhiteSpace(adminUi.Service)
+			&& !string.Equals(adminUi.ComposeService.Trim(), adminUi.Service.Trim(), StringComparison.Ordinal))
+		{
+			errors.Add("deployment.adminUi.composeService and deployment.adminUi.service must match when both are provided.");
+		}
+
+		if (!string.IsNullOrWhiteSpace(adminUi.PathPrefix) && !adminUi.PathPrefix.StartsWith("/", StringComparison.Ordinal))
+			errors.Add("deployment.adminUi.pathPrefix must start with '/'.");
+
+		if (adminUi.Port < MinimumServicePort || adminUi.Port > MaximumServicePort)
+			errors.Add("deployment.adminUi.port must be between 1 and 65535.");
 	}
 
 	private static void ValidateLocalizedMap(Dictionary<string, string> values, string fieldName, List<string> errors)
