@@ -40,6 +40,7 @@ public sealed class DockerSharedServicesCatalogTests
 		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerSharedServicesCatalog.DevelopmentInstanceEnvironmentVariableName, null);
 		using EnvironmentVariableScope hostRootScope = new EnvironmentVariableScope(DockerSharedServicesCatalog.SharedServicesHostRootPathEnvironmentVariableName, null);
 		using EnvironmentVariableScope mongoImageScope = new EnvironmentVariableScope(DockerSharedServicesCatalog.MongoImageEnvironmentVariableName, null);
+		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");
 
 		try
 		{
@@ -64,12 +65,15 @@ public sealed class DockerSharedServicesCatalogTests
 			Assert.AreEqual(DockerSharedServicesCatalog.DefaultGrafanaImage, plan.Services[8].Image);
 			CollectionAssert.Contains(loki.Volumes.ToArray(), Path.Combine(sharedServicesRootPath, "loki", "config", "loki.yml") + ":/etc/loki/local-config.yaml:ro");
 			CollectionAssert.Contains(tempo.Volumes.ToArray(), Path.Combine(sharedServicesRootPath, "tempo", "config", "tempo.yml") + ":/etc/tempo.yaml:ro");
-			Assert.AreEqual("PathPrefix(`/tools/loki`)", loki.Labels["traefik.http.routers.shared-tools-loki.rule"]);
-			Assert.AreEqual("PathPrefix(`/tools/tempo`)", tempo.Labels["traefik.http.routers.shared-tools-tempo.rule"]);
-			Assert.AreEqual("PathPrefix(`/tools/prometheus`)", prometheus.Labels["traefik.http.routers.shared-tools-prometheus.rule"]);
-			Assert.AreEqual("PathPrefix(`/tools/grafana`)", grafana.Labels["traefik.http.routers.shared-tools-grafana.rule"]);
-			Assert.AreEqual("%(protocol)s://%(domain)s/tools/grafana/", grafana.Environment.Single(entry => entry.Name == "GF_SERVER_ROOT_URL").Value);
-			Assert.AreEqual("true", grafana.Environment.Single(entry => entry.Name == "GF_SERVER_SERVE_FROM_SUB_PATH").Value);
+			Assert.AreEqual(0, loki.Labels.Count);
+			Assert.AreEqual(0, tempo.Labels.Count);
+			Assert.AreEqual(0, prometheus.Labels.Count);
+			Assert.AreEqual(0, grafana.Labels.Count);
+			Assert.AreEqual("manoir", grafana.Environment.Single(entry => entry.Name == "GF_SECURITY_ADMIN_USER").Value);
+			Assert.AreEqual("test-primary-key", grafana.Environment.Single(entry => entry.Name == "GF_SECURITY_ADMIN_PASSWORD").Value);
+			Assert.AreEqual("false", grafana.Environment.Single(entry => entry.Name == "GF_AUTH_ANONYMOUS_ENABLED").Value);
+			Assert.IsFalse(grafana.Environment.Any(entry => entry.Name == "GF_SERVER_ROOT_URL"));
+			Assert.IsFalse(grafana.Environment.Any(entry => entry.Name == "GF_SERVER_SERVE_FROM_SUB_PATH"));
 			Assert.IsTrue(plan.Services.All(service => service.ImagePullPolicy == DockerImagePullPolicy.Always));
 			CollectionAssert.AreEqual(new[] { "1883:1883" }, plan.Services[2].Ports.ToArray());
 			CollectionAssert.AreEqual(new[] { "80" }, plan.Services[4].Ports.ToArray());

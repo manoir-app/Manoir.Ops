@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Docker.DotNet;
@@ -12,6 +13,8 @@ namespace MaNoir.PlatformOps.Provider.Docker;
 
 public sealed class DockerFirstRunBootstrapper : IDisposable
 {
+	private const int ImagePullRetryCount = 3;
+
 	private readonly DockerClient _dockerClient;
 	private readonly string _sharedServicesRootPath;
 	private readonly Func<DockerDeploymentPlan, CancellationToken, Task<DockerDeploymentExecutionResult>> _applyDeploymentAsync;
@@ -284,19 +287,59 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 	private async Task<bool> PullAndDetectImageUpdateAsync(string imageReference, string currentImageId, CancellationToken cancellationToken)
 	{
 		(string repository, string tag) = SplitImageReference(imageReference);
-		await _dockerClient.Images.CreateImageAsync(
-			new ImagesCreateParameters()
-			{
-				FromImage = repository,
-				Tag = tag
-			},
-			null,
-			new Progress<JSONMessage>(),
-			cancellationToken);
+		await PullImageWithRetriesAsync(repository, tag, cancellationToken);
 
 		ImageInspectResponse image = await _dockerClient.Images.InspectImageAsync(imageReference, cancellationToken);
 		return !string.IsNullOrWhiteSpace(image?.ID)
 			&& !string.Equals(image.ID, currentImageId, StringComparison.OrdinalIgnoreCase);
+	}
+
+	private async Task PullImageWithRetriesAsync(string repository, string tag, CancellationToken cancellationToken)
+	{
+		for (int attempt = 1; ; attempt++)
+		{
+			try
+			{
+				await _dockerClient.Images.CreateImageAsync(
+					new ImagesCreateParameters()
+					{
+						FromImage = repository,
+						Tag = tag
+					},
+					null,
+					new Progress<JSONMessage>(),
+					cancellationToken);
+				return;
+			}
+			catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+			{
+				throw;
+			}
+			catch (Exception exception) when (attempt < ImagePullRetryCount && IsTransientImagePullException(exception))
+			{
+				await Task.Delay(TimeSpan.FromSeconds(attempt), cancellationToken);
+			}
+		}
+	}
+
+	private static bool IsTransientImagePullException(Exception exception)
+	{
+		if (exception is HttpRequestException)
+			return true;
+
+		if (exception is DockerApiException apiException)
+		{
+			string responseBody = apiException.ResponseBody ?? string.Empty;
+			if (responseBody.Contains("EOF", StringComparison.OrdinalIgnoreCase)
+				|| responseBody.Contains("TLS handshake timeout", StringComparison.OrdinalIgnoreCase)
+				|| responseBody.Contains("connection reset", StringComparison.OrdinalIgnoreCase)
+				|| responseBody.Contains("i/o timeout", StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private static (string Repository, string Tag) SplitImageReference(string imageReference)

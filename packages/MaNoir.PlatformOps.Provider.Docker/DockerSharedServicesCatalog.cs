@@ -9,7 +9,8 @@ namespace MaNoir.PlatformOps.Provider.Docker;
 
 public static class DockerSharedServicesCatalog
 {
-	private const string ToolsBasePath = "/tools";
+	private const string DefaultGrafanaAdminUser = "manoir";
+	private const string DefaultGrafanaAdminPassword = "manoir";
 
 	public const string SharedServicesPluginId = "shared-services";
 
@@ -37,7 +38,7 @@ public static class DockerSharedServicesCatalog
 
 	private static readonly string MosquittoConfigurationFileContent = "listener 1883 0.0.0.0\nallow_anonymous true\npersistence false\n";
 	private static readonly string TraefikConfigurationFileContent = "entryPoints:\n  web:\n    address: \":80\"\nproviders:\n  docker:\n    endpoint: \"unix:///var/run/docker.sock\"\n    exposedByDefault: false\n    network: \"manoir\"\n";
-	private static readonly string LokiConfigurationFileContent = "auth_enabled: false\nserver:\n  http_listen_port: 3100\ncommon:\n  path_prefix: /loki\n  replication_factor: 1\n  ring:\n    kvstore:\n      store: inmemory\nschema_config:\n  configs:\n    - from: 2025-01-01\n      store: tsdb\n      object_store: filesystem\n      schema: v13\n      index:\n        prefix: index_\n        period: 24h\nstorage_config:\n  filesystem:\n    chunks_directory: /loki/chunks\n    rules_directory: /loki/rules\nlimits_config:\n  allow_structured_metadata: true\n  volume_enabled: true\npattern_ingester:\n  enabled: true\n";
+	private static readonly string LokiConfigurationFileContent = "auth_enabled: false\nserver:\n  http_listen_port: 3100\ncommon:\n  path_prefix: /loki\n  replication_factor: 1\n  ring:\n    instance_addr: 127.0.0.1\n    kvstore:\n      store: inmemory\nschema_config:\n  configs:\n    - from: 2025-01-01\n      store: tsdb\n      object_store: filesystem\n      schema: v13\n      index:\n        prefix: index_\n        period: 24h\nstorage_config:\n  filesystem:\n    directory: /loki/chunks\nruler:\n  storage:\n    type: local\n    local:\n      directory: /loki/rules\n  rule_path: /loki/rules-temp\n  ring:\n    kvstore:\n      store: inmemory\n  enable_api: true\nlimits_config:\n  allow_structured_metadata: true\n  volume_enabled: true\npattern_ingester:\n  enabled: true\n";
 	private static readonly string TempoConfigurationFileContent = "stream_over_http_enabled: true\nserver:\n  http_listen_port: 3200\ndistributor:\n  receivers:\n    otlp:\n      protocols:\n        grpc:\n          endpoint: 0.0.0.0:4317\n        http:\n          endpoint: 0.0.0.0:4318\nstorage:\n  trace:\n    backend: local\n    wal:\n      path: /var/tempo/wal\n    local:\n      path: /var/tempo/traces\nusage_report:\n  reporting_enabled: false\n";
 	private static readonly string PrometheusConfigurationFileContent = "global:\n  scrape_interval: 15s\n  evaluation_interval: 15s\nscrape_configs:\n  - job_name: prometheus\n    static_configs:\n      - targets: ['prometheus:9090']\n  - job_name: manoir-platform-core\n    metrics_path: /metrics\n    static_configs:\n      - targets: ['manoir-platform-core:8080']\n  - job_name: manoir-gaia\n    metrics_path: /metrics\n    static_configs:\n      - targets: ['manoir-agents-gaia:8080']\n";
 	private static readonly string GrafanaDataSourcesConfigurationFileContent = "apiVersion: 1\ndatasources:\n  - name: Prometheus\n    uid: prometheus\n    type: prometheus\n    access: proxy\n    url: http://prometheus:9090\n    isDefault: true\n  - name: Loki\n    uid: loki\n    type: loki\n    access: proxy\n    url: http://loki:3100\n  - name: Tempo\n    uid: tempo\n    type: tempo\n    access: proxy\n    url: http://tempo:3200\n    jsonData:\n      tracesToLogsV2:\n        datasourceUid: loki\n      serviceMap:\n        datasourceUid: prometheus\n";
@@ -238,8 +239,7 @@ public static class DockerSharedServicesCatalog
 					lokiDataPath + ":/loki"
 				],
 				Environment = Array.Empty<DockerComposeEnvironmentEntry>(),
-				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>(),
-				Labels = CreateToolRouteLabels("loki", "/tools/loki", 3100, stripPrefix: true)
+				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()
 			},
 			new DockerDeploymentServicePlan()
 			{
@@ -256,8 +256,7 @@ public static class DockerSharedServicesCatalog
 					tempoDataPath + ":/var/tempo"
 				],
 				Environment = Array.Empty<DockerComposeEnvironmentEntry>(),
-				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>(),
-				Labels = CreateToolRouteLabels("tempo", "/tools/tempo", 3200, stripPrefix: true)
+				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()
 			},
 			new DockerDeploymentServicePlan()
 			{
@@ -274,8 +273,7 @@ public static class DockerSharedServicesCatalog
 					prometheusDataPath + ":/prometheus"
 				],
 				Environment = Array.Empty<DockerComposeEnvironmentEntry>(),
-				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>(),
-				Labels = CreateToolRouteLabels("prometheus", "/tools/prometheus", 9090, stripPrefix: true)
+				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()
 			},
 			new DockerDeploymentServicePlan()
 			{
@@ -293,15 +291,11 @@ public static class DockerSharedServicesCatalog
 				],
 				Environment =
 				[
-					new DockerComposeEnvironmentEntry() { Name = "GF_SECURITY_ADMIN_USER", Value = "admin" },
-					new DockerComposeEnvironmentEntry() { Name = "GF_SECURITY_ADMIN_PASSWORD", Value = "admin" },
-					new DockerComposeEnvironmentEntry() { Name = "GF_AUTH_ANONYMOUS_ENABLED", Value = "true" },
-					new DockerComposeEnvironmentEntry() { Name = "GF_AUTH_ANONYMOUS_ORG_ROLE", Value = "Admin" },
-					new DockerComposeEnvironmentEntry() { Name = "GF_SERVER_ROOT_URL", Value = "%(protocol)s://%(domain)s" + ToolsBasePath + "/grafana/" },
-					new DockerComposeEnvironmentEntry() { Name = "GF_SERVER_SERVE_FROM_SUB_PATH", Value = "true" }
+					new DockerComposeEnvironmentEntry() { Name = "GF_SECURITY_ADMIN_USER", Value = DefaultGrafanaAdminUser },
+					new DockerComposeEnvironmentEntry() { Name = "GF_SECURITY_ADMIN_PASSWORD", Value = ResolveGrafanaAdminPassword() },
+					new DockerComposeEnvironmentEntry() { Name = "GF_AUTH_ANONYMOUS_ENABLED", Value = "false" }
 				],
-				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>(),
-				Labels = CreateToolRouteLabels("grafana", "/tools/grafana", 3000, stripPrefix: false)
+				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()
 			}
 		];
 	}
@@ -313,6 +307,14 @@ public static class DockerSharedServicesCatalog
 			return configuredMongoImage.Trim();
 
 		return DefaultMongoImage;
+	}
+
+	private static string ResolveGrafanaAdminPassword()
+	{
+		string apiKey = Environment.GetEnvironmentVariable(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName);
+		return string.IsNullOrWhiteSpace(apiKey)
+			? DefaultGrafanaAdminPassword
+			: apiKey.Trim();
 	}
 
 	private static DockerDeploymentServicePlan CloneServicePlan(DockerDeploymentServicePlan source)
@@ -395,29 +397,6 @@ public static class DockerSharedServicesCatalog
 		EnsureWritableDataDirectory(Path.Combine(sharedServicesRootPath, "tempo", "data"));
 		EnsureWritableDataDirectory(Path.Combine(sharedServicesRootPath, "prometheus", "data"));
 		EnsureWritableDataDirectory(Path.Combine(sharedServicesRootPath, "grafana", "data"));
-	}
-
-	private static IReadOnlyDictionary<string, string> CreateToolRouteLabels(string serviceName, string pathPrefix, int servicePort, bool stripPrefix)
-	{
-		string normalizedServiceName = PlatformOpsNaming.RequireSegment(serviceName, "service", nameof(serviceName));
-		string routerName = "shared-tools-" + normalizedServiceName;
-		Dictionary<string, string> labels = new Dictionary<string, string>(StringComparer.Ordinal)
-		{
-			["traefik.enable"] = "true",
-			["traefik.docker.network"] = DockerRuntimeSpecFactory.SharedNetworkName,
-			[$"traefik.http.routers.{routerName}.rule"] = $"PathPrefix(`{pathPrefix}`)",
-			[$"traefik.http.routers.{routerName}.service"] = routerName,
-			[$"traefik.http.services.{routerName}.loadbalancer.server.port"] = servicePort.ToString()
-		};
-
-		if (stripPrefix)
-		{
-			string middlewareName = routerName + "-strip-prefix";
-			labels[$"traefik.http.routers.{routerName}.middlewares"] = middlewareName;
-			labels[$"traefik.http.middlewares.{middlewareName}.stripprefix.prefixes"] = pathPrefix;
-		}
-
-		return labels;
 	}
 
 	private static void EnsureConfigurationFile(string sharedServicesRootPath, string relativeDirectoryPath, string fileName, string content)
