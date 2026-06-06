@@ -1,7 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Docker.DotNet;
+using Docker.DotNet.Models;
 using MaNoir.Core.Agents;
 using MaNoir.Core.Contracts.Models.Agents;
 using Microsoft.Extensions.Hosting;
@@ -14,9 +18,11 @@ public sealed class GaiaAgentLifecycleService : BackgroundService
 	private readonly GaiaOperationsService _gaia;
 	private readonly GaiaAgentRuntime _runtime;
 	private AgentRegistryLogic _agentRegistryLogic;
+	private bool _isAttachedToSharedNetwork;
 	private bool _isRegistered;
 	private bool _isRuntimeEnvironmentConfigured;
 	private bool _hasReportedWaitingForMinimumVital;
+	private bool _hasReportedWaitingForSharedNetwork;
 
 	public GaiaAgentLifecycleService(GaiaOperationsService gaia, GaiaAgentRuntime runtime)
 	{
@@ -34,9 +40,7 @@ public sealed class GaiaAgentLifecycleService : BackgroundService
 
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
-		using PeriodicTimer timer = new(_runtime.HeartbeatInterval);
-
-		while (await timer.WaitForNextTickAsync(stoppingToken))
+		while (!stoppingToken.IsCancellationRequested)
 		{
 			if (!_gaia.IsMinimumVitalReady)
 			{
@@ -50,20 +54,30 @@ public sealed class GaiaAgentLifecycleService : BackgroundService
 					_hasReportedWaitingForMinimumVital = true;
 				}
 
+				await DelayAsync(TimeSpan.FromSeconds(1), stoppingToken);
 				continue;
 			}
 
 			_hasReportedWaitingForMinimumVital = false;
+
+			if (!await EnsureSharedNetworkConnectedAsync(stoppingToken))
+			{
+				await DelayAsync(TimeSpan.FromSeconds(1), stoppingToken);
+				continue;
+			}
 
 			EnsureRuntimeEnvironmentConfigured();
 
 			if (!_isRegistered)
 			{
 				await TryRegisterAsync(AgentState.Ready, "Minimum vital ready", stoppingToken);
+				if (!_isRegistered)
+					await DelayAsync(TimeSpan.FromSeconds(5), stoppingToken);
 				continue;
 			}
 
 			await TryHeartbeatAsync(AgentState.Ready, "Running", stoppingToken);
+			await DelayAsync(_runtime.HeartbeatInterval, stoppingToken);
 		}
 	}
 
@@ -155,5 +169,83 @@ public sealed class GaiaAgentLifecycleService : BackgroundService
 
 		_isRuntimeEnvironmentConfigured = true;
 		_runtime.ReportEnvironmentConfigured(configuredVariables);
+	}
+
+	private async Task<bool> EnsureSharedNetworkConnectedAsync(CancellationToken cancellationToken)
+	{
+		if (_isAttachedToSharedNetwork)
+			return true;
+
+		string networkName = DockerRuntimeSpecFactory.SharedNetworkName;
+		string containerId = ResolveCurrentContainerId();
+		if (string.IsNullOrWhiteSpace(containerId))
+		{
+			if (!_hasReportedWaitingForSharedNetwork)
+			{
+				_runtime.ReportSharedNetworkUnavailable(networkName);
+				_hasReportedWaitingForSharedNetwork = true;
+			}
+
+			return false;
+		}
+
+		try
+		{
+			using DockerClient dockerClient = DockerClientFactory.CreateClient();
+			IList<NetworkResponse> networks = await dockerClient.Networks.ListNetworksAsync(new NetworksListParameters(), cancellationToken);
+			NetworkResponse network = networks.FirstOrDefault(candidate => string.Equals(candidate?.Name, networkName, StringComparison.OrdinalIgnoreCase));
+			if (network == null)
+			{
+				if (!_hasReportedWaitingForSharedNetwork)
+				{
+					_runtime.ReportSharedNetworkUnavailable(networkName);
+					_hasReportedWaitingForSharedNetwork = true;
+				}
+
+				return false;
+			}
+
+			await dockerClient.Networks.ConnectNetworkAsync(network.ID, new NetworkConnectParameters()
+			{
+				Container = containerId
+			}, cancellationToken);
+
+			_isAttachedToSharedNetwork = true;
+			_hasReportedWaitingForSharedNetwork = false;
+			_runtime.ReportSharedNetworkConnected(networkName);
+			return true;
+		}
+		catch (DockerApiException exception) when (exception.StatusCode == HttpStatusCode.Conflict)
+		{
+			_isAttachedToSharedNetwork = true;
+			_hasReportedWaitingForSharedNetwork = false;
+			_runtime.ReportSharedNetworkConnected(networkName);
+			return true;
+		}
+		catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+		{
+			_runtime.ReportSharedNetworkConnectionFailed(networkName, exception);
+			return false;
+		}
+	}
+
+	private static string ResolveCurrentContainerId()
+	{
+		string hostname = Environment.GetEnvironmentVariable("HOSTNAME");
+		if (!string.IsNullOrWhiteSpace(hostname))
+			return hostname.Trim();
+
+		return string.IsNullOrWhiteSpace(Environment.MachineName) ? null : Environment.MachineName.Trim();
+	}
+
+	private static async Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
+	{
+		try
+		{
+			await Task.Delay(delay, cancellationToken);
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+		}
 	}
 }

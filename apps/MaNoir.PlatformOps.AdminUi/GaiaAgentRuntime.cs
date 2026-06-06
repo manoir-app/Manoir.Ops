@@ -90,6 +90,21 @@ public sealed class GaiaAgentRuntime
 		LogInfo($"Agent {AgentId} configured runtime environment variables: {string.Join(", ", variables.Keys)}.");
 	}
 
+	public void ReportSharedNetworkConnected(string networkName)
+	{
+		LogInfo($"Agent {AgentId} connected to Docker network {networkName}.");
+	}
+
+	public void ReportSharedNetworkConnectionFailed(string networkName, Exception exception)
+	{
+		LogWarning($"Agent {AgentId} could not connect to Docker network {networkName}.", exception);
+	}
+
+	public void ReportSharedNetworkUnavailable(string networkName)
+	{
+		LogInfo($"Agent {AgentId} is waiting for Docker network {networkName} before registration.");
+	}
+
 	public void ReportInterprocessStopped()
 	{
 		LogInfo($"Interprocess listener stopped for agent {AgentId}.");

@@ -23,7 +23,15 @@ function New-RandomBase64String {
 	param([int]$ByteCount = 32)
 
 	$bytes = New-Object byte[] $ByteCount
-	[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+	$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+	try {
+		$rng.GetBytes($bytes)
+	}
+	finally {
+		if ($null -ne $rng) {
+			$rng.Dispose()
+		}
+	}
 	return [Convert]::ToBase64String($bytes)
 }
 
@@ -81,7 +89,7 @@ if ([string]::IsNullOrWhiteSpace($AuthJwtSigningKey)) {
 	$AuthJwtSigningKey = New-RandomBase64String -ByteCount 32
 }
 
-$hostOs = if ($IsWindows) { "windows" } elseif ($IsLinux) { "linux" } else { "unknown" }
+$hostOs = if ($env:OS -eq "Windows_NT") { "windows" } elseif (Test-Path "/proc/version") { "linux" } else { "unknown" }
 if ($hostOs -eq "unknown") {
 	throw "This script only supports PowerShell on Windows or Linux hosts."
 }
@@ -112,8 +120,27 @@ if ($LASTEXITCODE -ne 0) {
 
 $DockerSocketSource = Resolve-DockerSocketSource -RequestedSource $DockerSocketSource -DockerServerOs $serverOs -HostOperatingSystem $hostOs
 
-& $dockerCommand.Source container inspect $ContainerName *> $null
-if ($LASTEXITCODE -eq 0) {
+
+$sharedNetworkName = "manoir"
+$existingNetworkNames = & $dockerCommand.Source network ls --format "{{.Name}}"
+if ($LASTEXITCODE -ne 0) {
+	throw "Unable to query existing Docker networks."
+}
+
+if (-not ($existingNetworkNames | Where-Object { $_.Trim() -eq $sharedNetworkName })) {
+	Write-Host "Creating Docker network '$sharedNetworkName'."
+	& $dockerCommand.Source network create $sharedNetworkName | Out-Null
+	if ($LASTEXITCODE -ne 0) {
+		throw "The Docker network '$sharedNetworkName' could not be created."
+	}
+}
+
+$existingContainerNames = & $dockerCommand.Source container ls --all --format "{{.Names}}"
+if ($LASTEXITCODE -ne 0) {
+	throw "Unable to query existing Docker containers."
+}
+
+if ($existingContainerNames | Where-Object { $_.Trim() -eq $ContainerName }) {
 	Write-Host "Removing existing container '$ContainerName'."
 	& $dockerCommand.Source rm --force $ContainerName | Out-Null
 	if ($LASTEXITCODE -ne 0) {
@@ -130,6 +157,7 @@ $dockerArgs = @(
 	"run",
 	"--detach",
 	"--name", $ContainerName,
+	"--network", $sharedNetworkName,
 	"--restart", "unless-stopped",
 	"--publish", "${WebPort}:8080",
 	"--mount", "type=bind,source=$DockerSocketSource,target=/var/run/docker.sock",
