@@ -65,6 +65,7 @@ public static class DockerRuntimeSpecFactory
 				NetworkAliases = ResolveNetworkAliases(plan.PluginId, service),
 				Image = service.Image,
 				RestartPolicy = service.RestartPolicy,
+				Command = service.Command,
 				Environment = environment,
 				PortBindings = portBindings,
 				Mounts = mounts

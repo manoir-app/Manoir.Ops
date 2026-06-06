@@ -63,6 +63,7 @@ public sealed class DockerSharedServicesCatalogTests
 			Assert.AreEqual(DockerSharedServicesCatalog.DefaultTempoImage, plan.Services[6].Image);
 			Assert.AreEqual(DockerSharedServicesCatalog.DefaultPrometheusImage, plan.Services[7].Image);
 			Assert.AreEqual(DockerSharedServicesCatalog.DefaultGrafanaImage, plan.Services[8].Image);
+			CollectionAssert.AreEqual(new[] { "-target=all", "-config.file=/etc/tempo.yaml" }, tempo.Command.ToArray());
 			CollectionAssert.Contains(loki.Volumes.ToArray(), Path.Combine(sharedServicesRootPath, "loki", "config", "loki.yml") + ":/etc/loki/local-config.yaml:ro");
 			CollectionAssert.Contains(tempo.Volumes.ToArray(), Path.Combine(sharedServicesRootPath, "tempo", "config", "tempo.yml") + ":/etc/tempo.yaml:ro");
 			Assert.AreEqual(0, loki.Labels.Count);

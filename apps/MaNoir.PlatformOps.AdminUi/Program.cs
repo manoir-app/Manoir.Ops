@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -5,6 +6,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MaNoir.Core.Observability;
 using MaNoir.PlatformOps.AdminUi;
+
+EnsureGaiaObservabilityDefaults();
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -46,6 +49,22 @@ app.MapPost("/api/ops/gaia/reset-shared-services", async (GaiaOperationsService 
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+static void EnsureGaiaObservabilityDefaults()
+{
+	string enabledValue = Environment.GetEnvironmentVariable("MANOIR_OBSERVABILITY_ENABLED");
+	if (string.IsNullOrWhiteSpace(enabledValue))
+		Environment.SetEnvironmentVariable("MANOIR_OBSERVABILITY_ENABLED", "true");
+
+	if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MANOIR_OTEL_TRACES_ENDPOINT")))
+		Environment.SetEnvironmentVariable("MANOIR_OTEL_TRACES_ENDPOINT", "http://tempo:4318/v1/traces");
+
+	if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MANOIR_OTEL_LOGS_ENDPOINT")))
+		Environment.SetEnvironmentVariable("MANOIR_OTEL_LOGS_ENDPOINT", "http://loki:3100/otlp/v1/logs");
+
+	if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MANOIR_PROMETHEUS_METRICS_PATH")))
+		Environment.SetEnvironmentVariable("MANOIR_PROMETHEUS_METRICS_PATH", "/metrics");
+}
 
 public sealed class ResetSharedServicesRequest
 {

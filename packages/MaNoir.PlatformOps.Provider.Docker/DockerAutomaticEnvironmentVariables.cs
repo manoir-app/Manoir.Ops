@@ -24,7 +24,7 @@ public static class DockerAutomaticEnvironmentVariables
 			new DockerResolvedEnvironmentEntry() { Name = "REDIS_SERVICE_PORT", Value = "6379" }
 		];
 
-		if (IsObservabilityEnabled())
+		if (IsPluginObservabilityEnabled())
 		{
 			entries.Add(new DockerResolvedEnvironmentEntry() { Name = "MANOIR_OBSERVABILITY_ENABLED", Value = "true" });
 			entries.Add(new DockerResolvedEnvironmentEntry() { Name = "MANOIR_OTEL_TRACES_ENDPOINT", Value = ResolveEnvironmentValue("MANOIR_OTEL_TRACES_ENDPOINT", "http://tempo:4318/v1/traces") });
@@ -51,12 +51,18 @@ public static class DockerAutomaticEnvironmentVariables
 			.ToDictionary(entry => entry.Name, entry => entry.Value, StringComparer.Ordinal);
 	}
 
-	private static bool IsObservabilityEnabled()
+	private static bool IsPluginObservabilityEnabled()
 	{
-		string rawValue = Environment.GetEnvironmentVariable("MANOIR_OBSERVABILITY_ENABLED");
-		return string.Equals(rawValue?.Trim(), "true", StringComparison.OrdinalIgnoreCase)
-			|| string.Equals(rawValue?.Trim(), "1", StringComparison.OrdinalIgnoreCase)
-			|| string.Equals(rawValue?.Trim(), "yes", StringComparison.OrdinalIgnoreCase);
+		string rawValue = Environment.GetEnvironmentVariable("MANOIR_PLUGIN_OBSERVABILITY_ENABLED");
+		if (string.IsNullOrWhiteSpace(rawValue))
+			rawValue = Environment.GetEnvironmentVariable("MANOIR_OBSERVABILITY_ENABLED");
+
+		if (string.IsNullOrWhiteSpace(rawValue))
+			return true;
+
+		return string.Equals(rawValue.Trim(), "true", StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(rawValue.Trim(), "1", StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(rawValue.Trim(), "yes", StringComparison.OrdinalIgnoreCase);
 	}
 
 	private static string ResolveEnvironmentValue(string environmentVariableName, string defaultValue)

@@ -249,6 +249,7 @@ public static class DockerSharedServicesCatalog
 				RestartPolicy = "unless-stopped",
 				ImagePullPolicy = DockerImagePullPolicy.Always,
 				IsRequiredForMinimumVital = false,
+				Command = ["-target=all", "-config.file=/etc/tempo.yaml"],
 				Ports = isDevelopmentInstance ? ["3200:3200", "4318:4318"] : Array.Empty<string>(),
 				Volumes =
 				[
@@ -328,6 +329,7 @@ public static class DockerSharedServicesCatalog
 			ContainerName = source.ContainerName,
 			RestartPolicy = source.RestartPolicy,
 			ImagePullPolicy = source.ImagePullPolicy,
+			Command = source.Command?.ToArray() ?? Array.Empty<string>(),
 			Ports = source.Ports?.ToArray() ?? Array.Empty<string>(),
 			Volumes = source.Volumes?.ToArray() ?? Array.Empty<string>(),
 			DependsOn = source.DependsOn?.ToArray() ?? Array.Empty<string>(),

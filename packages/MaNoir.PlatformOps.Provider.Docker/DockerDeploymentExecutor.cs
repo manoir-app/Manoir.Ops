@@ -214,6 +214,7 @@ public sealed class DockerDeploymentExecutor : IDisposable
 			Image = service.Image,
 			Name = service.ContainerName,
 			Hostname = service.ContainerName,
+			Cmd = service.Command?.ToList(),
 			Env = service.Environment.ToList(),
 			ExposedPorts = exposedPorts.Count == 0 ? null : exposedPorts,
 			NetworkingConfig = BuildNetworkingConfig(runtimeSpec, service),

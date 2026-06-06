@@ -43,6 +43,8 @@ public sealed class DockerDeploymentServicePlan
 
 	public DockerImagePullPolicy ImagePullPolicy { get; set; }
 
+	public IReadOnlyList<string> Command { get; set; } = Array.Empty<string>();
+
 	public IReadOnlyList<string> Ports { get; set; } = Array.Empty<string>();
 
 	public IReadOnlyList<string> Volumes { get; set; } = Array.Empty<string>();

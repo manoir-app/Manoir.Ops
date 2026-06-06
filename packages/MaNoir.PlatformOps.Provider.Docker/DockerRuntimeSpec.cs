@@ -30,6 +30,8 @@ public sealed class DockerRuntimeServiceSpec
 
 	public string RestartPolicy { get; set; }
 
+	public IReadOnlyList<string> Command { get; set; } = Array.Empty<string>();
+
 	public IReadOnlyList<string> Environment { get; set; } = Array.Empty<string>();
 
 	public IReadOnlyList<DockerRuntimePortBinding> PortBindings { get; set; } = Array.Empty<DockerRuntimePortBinding>();
