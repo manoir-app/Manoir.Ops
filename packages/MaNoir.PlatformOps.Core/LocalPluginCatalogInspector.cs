@@ -47,6 +47,18 @@ public static class LocalPluginCatalogInspector
 					errors.Add("The plugin manifest '" + manifestPath + "' could not be read: " + exception.Message);
 				}
 			}
+
+			if (normalizedRequiredPluginIds.Contains(PlatformCoreCatalogPluginLoader.PlatformPluginId, StringComparer.OrdinalIgnoreCase))
+			{
+				if (PlatformCoreCatalogPluginLoader.TryLoad(pluginCatalogRootPath, out PluginDeploymentDescriptor descriptor, out string platformError))
+				{
+					availablePluginIds.Add(descriptor.PluginId);
+				}
+				else if (!string.IsNullOrWhiteSpace(platformError))
+				{
+					errors.Add(platformError);
+				}
+			}
 		}
 
 		string[] normalizedAvailablePluginIds = availablePluginIds

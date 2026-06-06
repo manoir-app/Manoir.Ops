@@ -17,7 +17,7 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 	private readonly Func<DockerDeploymentPlan, CancellationToken, Task<DockerDeploymentExecutionResult>> _applyDeploymentAsync;
 
 	public DockerFirstRunBootstrapper(string sharedServicesRootPath = null)
-		: this(new DockerClientConfiguration().CreateClient(), sharedServicesRootPath, null)
+		: this(DockerClientFactory.CreateClient(), sharedServicesRootPath, null)
 	{
 	}
 
@@ -30,11 +30,13 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 
 	public async Task<DockerFirstRunStatus> InspectAsync(CancellationToken cancellationToken = default)
 	{
+		List<string> platformCoreErrors = GetPlatformCoreAvailabilityErrors();
 		DockerFirstRunStatus status = new DockerFirstRunStatus()
 		{
 			SharedServices = DockerSharedServicesCatalog.Evaluate(Array.Empty<ContainerListResponse>(), _sharedServicesRootPath),
 			CoreServices = DockerCoreServiceCatalog.Evaluate(Array.Empty<ContainerListResponse>(), _sharedServicesRootPath),
-			EnvironmentErrors = GetEnvironmentErrors()
+			EnvironmentErrors = GetEnvironmentErrors(),
+			OperationErrors = platformCoreErrors
 		};
 
 		try
@@ -47,6 +49,7 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 			status.DockerServerVersion = version?.Version;
 			status.SharedServices = DockerSharedServicesCatalog.Evaluate(containers.ToArray(), _sharedServicesRootPath);
 			status.CoreServices = DockerCoreServiceCatalog.Evaluate(containers.ToArray(), _sharedServicesRootPath);
+			status.OperationErrors = platformCoreErrors;
 			return status;
 		}
 		catch (Exception exception)
@@ -102,6 +105,10 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 				deployedSharedServices.Add(serviceName);
 				operationMessages.Add("Shared service '" + serviceName + "' ensured.");
 			}
+			catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+			{
+				operationErrors.Add("Shared service '" + serviceName + "' could not be ensured: the Docker request timed out after " + (int)DockerClientFactory.ResolveDefaultTimeout().TotalSeconds + " seconds.");
+			}
 			catch (Exception exception)
 			{
 				operationErrors.Add("Shared service '" + serviceName + "' could not be ensured: " + exception.Message);
@@ -113,10 +120,18 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 			operationMessages.Add("Ensuring core service '" + serviceName + "'.");
 			try
 			{
-				DockerDeploymentPlan corePlan = DockerCoreServiceCatalog.CreateDeploymentPlan(_sharedServicesRootPath);
+				string platformCoreError = DockerCoreServiceCatalog.GetPlatformCorePluginAvailabilityError(_sharedServicesRootPath);
+				if (!string.IsNullOrWhiteSpace(platformCoreError))
+					operationErrors.Add(platformCoreError);
+
+				DockerDeploymentPlan corePlan = await DockerCoreServiceCatalog.CreateDeploymentPlanAsync(_sharedServicesRootPath, cancellationToken);
 				await _applyDeploymentAsync(corePlan, cancellationToken);
 				deployedCoreServices.Add(serviceName);
 				operationMessages.Add("Core service '" + serviceName + "' ensured.");
+			}
+			catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+			{
+				operationErrors.Add("Core service '" + serviceName + "' could not be ensured: the Docker request timed out after " + (int)DockerClientFactory.ResolveDefaultTimeout().TotalSeconds + " seconds.");
 			}
 			catch (Exception exception)
 			{
@@ -219,6 +234,14 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 			: errors;
 	}
 
+	private List<string> GetPlatformCoreAvailabilityErrors()
+	{
+		string error = DockerCoreServiceCatalog.GetPlatformCorePluginAvailabilityError(_sharedServicesRootPath);
+		return string.IsNullOrWhiteSpace(error)
+			? new List<string>()
+			: [error];
+	}
+
 	private async Task RefreshMutableImagesAsync(
 		IReadOnlyList<DockerSharedServiceStatus> services,
 		string serviceKind,
@@ -246,6 +269,10 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 
 				service.MatchesExpectedImage = false;
 				operationMessages.Add("A newer image was pulled for " + serviceKind + " '" + service.ServiceName + "'.");
+			}
+			catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+			{
+				operationErrors.Add("The image refresh check timed out after " + (int)DockerClientFactory.ResolveDefaultTimeout().TotalSeconds + " seconds for " + serviceKind + " '" + service.ServiceName + "'.");
 			}
 			catch (Exception exception)
 			{

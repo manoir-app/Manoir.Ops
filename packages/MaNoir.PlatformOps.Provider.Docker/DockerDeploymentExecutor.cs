@@ -14,7 +14,7 @@ public sealed class DockerDeploymentExecutor : IDisposable
 	private readonly DockerClient _dockerClient;
 
 	public DockerDeploymentExecutor()
-		: this(new DockerClientConfiguration().CreateClient())
+		: this(DockerClientFactory.CreateClient())
 	{
 	}
 

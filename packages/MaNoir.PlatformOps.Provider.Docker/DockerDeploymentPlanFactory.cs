@@ -112,7 +112,7 @@ public static class DockerDeploymentPlanFactory
 			services.Add(new DockerDeploymentServicePlan()
 			{
 				Name = service.Name,
-				Image = service.Image,
+				Image = NormalizeImageForRuntime(service.Image),
 				BuildContext = service.BuildContext,
 				ContainerName = service.ContainerName,
 				RestartPolicy = service.RestartPolicy,
@@ -136,6 +136,26 @@ public static class DockerDeploymentPlanFactory
 			ResolvedSharedEnvironmentVariables = Array.Empty<PluginResolvedEnvironmentVariable>(),
 			Services = services
 		};
+	}
+
+	internal static string NormalizeImageForRuntime(string imageReference)
+	{
+		if (string.IsNullOrWhiteSpace(imageReference) || !DockerPlatformRuntimeEnvironment.IsDevelopmentInstance())
+			return imageReference;
+
+		if (imageReference.Contains('@', StringComparison.Ordinal))
+			return imageReference;
+
+		int lastSlashIndex = imageReference.LastIndexOf('/');
+		int lastColonIndex = imageReference.LastIndexOf(':');
+		if (lastColonIndex <= lastSlashIndex)
+			return imageReference + ":dev";
+
+		string tag = imageReference.Substring(lastColonIndex + 1);
+		if (!string.Equals(tag, "latest", StringComparison.OrdinalIgnoreCase))
+			return imageReference;
+
+		return imageReference.Substring(0, lastColonIndex + 1) + "dev";
 	}
 
 	private static void ApplyResolvedServiceEnvironment(DockerDeploymentPlan plan)

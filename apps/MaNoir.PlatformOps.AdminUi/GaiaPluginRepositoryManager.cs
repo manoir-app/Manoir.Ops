@@ -132,7 +132,7 @@ public sealed class GaiaPluginRepositoryManager
 				}
 
 				messages.Add("Updating plugin repository '" + repositoryUrl + "'.");
-				GaiaCommandExecutionResult pullResult = await _runCommandAsync(repositoryRootPath, ["pull", "--ff-only"], cancellationToken);
+				GaiaCommandExecutionResult pullResult = await RunManagedRepositoryCommandAsync(repositoryRootPath, ["pull", "--ff-only"], cancellationToken);
 				EnsureSuccess(pullResult, repositoryUrl, "pull");
 				messages.Add("Plugin repository '" + repositoryUrl + "' updated.");
 			}
@@ -247,6 +247,21 @@ public sealed class GaiaPluginRepositoryManager
 			: result.StandardError;
 
 		throw new InvalidOperationException("git " + operation + " failed for '" + repositoryUrl + "': " + details.Trim());
+	}
+
+	private Task<GaiaCommandExecutionResult> RunManagedRepositoryCommandAsync(string repositoryRootPath, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
+	{
+		string resolvedRepositoryRootPath = Path.GetFullPath(repositoryRootPath ?? throw new ArgumentNullException(nameof(repositoryRootPath)));
+		List<string> gitArguments = new List<string>()
+		{
+			"-c",
+			"safe.directory=" + resolvedRepositoryRootPath
+		};
+
+		if (arguments != null)
+			gitArguments.AddRange(arguments);
+
+		return _runCommandAsync(resolvedRepositoryRootPath, gitArguments, cancellationToken);
 	}
 
 	private static async Task<GaiaCommandExecutionResult> RunCommandAsync(string workingDirectory, IReadOnlyList<string> arguments, CancellationToken cancellationToken)

@@ -116,6 +116,11 @@ public static class DockerSharedServicesCatalog
 			: homeAutomationRootPath;
 	}
 
+	public static string ResolvePluginRepositoriesRootPath(string sharedServicesRootPath)
+	{
+		return Path.Combine(ResolveDefaultHomeAutomationRootPath(ResolveSharedServicesRootPath(sharedServicesRootPath)), "plugins");
+	}
+
 	private static IReadOnlyList<DockerDeploymentServicePlan> GetRequiredServiceDefinitions(string sharedServicesRootPath, bool isDevelopmentInstance)
 	{
 		string mongoImage = ResolveMongoImage();
@@ -223,6 +228,16 @@ public static class DockerSharedServicesCatalog
 			ResolvedEnvironment = source.ResolvedEnvironment?.ToArray() ?? Array.Empty<DockerResolvedEnvironmentEntry>(),
 			Labels = source.Labels == null ? new Dictionary<string, string>(StringComparer.Ordinal) : new Dictionary<string, string>(source.Labels, StringComparer.Ordinal)
 		};
+	}
+
+	private static string ResolveDefaultHomeAutomationRootPath(string resolvedSharedServicesRootPath)
+	{
+		string normalizedPath = resolvedSharedServicesRootPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+		string homeAutomationRootPath = TryGetParentPath(normalizedPath);
+
+		return string.IsNullOrWhiteSpace(homeAutomationRootPath)
+			? normalizedPath
+			: homeAutomationRootPath;
 	}
 
 	private static string ResolveContainerName(string serviceName)

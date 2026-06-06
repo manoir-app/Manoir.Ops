@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Docker.DotNet.Models;
 using MaNoir.PlatformOps.Core;
 
@@ -11,9 +13,15 @@ public static class DockerCoreServiceCatalog
 {
 	public const string CorePluginId = "core";
 
+	public const string PlatformPluginId = "platform";
+
 	public const string CoreGroup = "core";
 
 	public const string CoreServiceName = "core";
+
+	public const string DefaultCoreAdminUiPathPrefix = "/platform";
+
+	public const int DefaultCoreAdminUiServicePort = 8080;
 
 	public const string CoreAdminUiHostPortEnvironmentVariableName = "MANOIR_CORE_ADMINUI_HOST_PORT";
 
@@ -22,6 +30,29 @@ public static class DockerCoreServiceCatalog
 	private const string CoreImageRepository = "ghcr.io/manoir-app/manoir-core-adminui";
 
 	public static DockerDeploymentPlan CreateDeploymentPlan(string platformRootPath)
+	{
+		if (TryLoadPlatformCoreDescriptor(platformRootPath, out PluginDeploymentDescriptor descriptor, out _))
+			return CreatePlanFromPlatformDescriptor(descriptor);
+
+		return CreateFallbackDeploymentPlan(platformRootPath);
+	}
+
+	public static async Task<DockerDeploymentPlan> CreateDeploymentPlanAsync(string platformRootPath, CancellationToken cancellationToken = default)
+	{
+		if (TryLoadPlatformCoreDescriptor(platformRootPath, out PluginDeploymentDescriptor descriptor, out _))
+			return await DockerDeploymentPlanFactory.CreateAsync(descriptor, cancellationToken);
+
+		return CreateFallbackDeploymentPlan(platformRootPath);
+	}
+
+	public static string GetPlatformCorePluginAvailabilityError(string platformRootPath)
+	{
+		return TryLoadPlatformCoreDescriptor(platformRootPath, out _, out string error)
+			? null
+			: error;
+	}
+
+	private static DockerDeploymentPlan CreateFallbackDeploymentPlan(string platformRootPath)
 	{
 		string resolvedRootPath = DockerSharedServicesCatalog.ResolveSharedServicesRootPath(platformRootPath);
 		bool isDevelopmentInstance = DockerPlatformRuntimeEnvironment.IsDevelopmentInstance();
@@ -47,7 +78,8 @@ public static class DockerCoreServiceCatalog
 					ImagePullPolicy = DockerImagePullPolicy.Always,
 					Ports = [hostPort.ToString() + ":8080"],
 					Environment = Array.Empty<DockerComposeEnvironmentEntry>(),
-					ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()
+					ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>(),
+					Labels = CreateAdminUiLabels()
 				}
 			]
 		};
@@ -93,5 +125,66 @@ public static class DockerCoreServiceCatalog
 			throw new InvalidOperationException(CoreAdminUiHostPortEnvironmentVariableName + " must contain a valid TCP port number.");
 
 		return hostPort;
+	}
+
+	private static IReadOnlyDictionary<string, string> CreateAdminUiLabels()
+	{
+		DockerAdminUiRoutePlan routePlan = DockerDeploymentPlanFactory.CreateAdminUiRoutePlan(new PluginDeploymentDescriptor()
+		{
+			PluginId = PlatformPluginId,
+			AdminUiPathPrefix = DefaultCoreAdminUiPathPrefix,
+			AdminUiServiceName = CoreServiceName,
+			AdminUiServicePort = DefaultCoreAdminUiServicePort
+		});
+
+		return routePlan?.Labels == null
+			? new Dictionary<string, string>(StringComparer.Ordinal)
+			: new Dictionary<string, string>(routePlan.Labels, StringComparer.Ordinal);
+	}
+
+	private static bool TryLoadPlatformCoreDescriptor(string platformRootPath, out PluginDeploymentDescriptor descriptor, out string error)
+	{
+		string pluginRepositoriesRootPath = DockerSharedServicesCatalog.ResolvePluginRepositoriesRootPath(platformRootPath);
+		return PlatformCoreCatalogPluginLoader.TryLoad(pluginRepositoriesRootPath, out descriptor, out error);
+	}
+
+	private static DockerDeploymentPlan CreatePlanFromPlatformDescriptor(PluginDeploymentDescriptor descriptor)
+	{
+		DockerComposeFile composeFile = DockerComposeParser.ParseFile(descriptor.ComposeArtifactFullPath);
+		DockerAdminUiRoutePlan routePlan = DockerDeploymentPlanFactory.CreateAdminUiRoutePlan(descriptor);
+		List<DockerDeploymentServicePlan> services = new List<DockerDeploymentServicePlan>();
+
+		foreach (DockerComposeService service in composeFile.Services)
+		{
+			bool isAdminUiService = routePlan != null && string.Equals(service.Name, routePlan.ComposeServiceName, StringComparison.OrdinalIgnoreCase);
+			services.Add(new DockerDeploymentServicePlan()
+			{
+				Name = service.Name,
+				Image = DockerDeploymentPlanFactory.NormalizeImageForRuntime(service.Image),
+				BuildContext = service.BuildContext,
+				ContainerName = service.ContainerName,
+				RestartPolicy = service.RestartPolicy,
+				ImagePullPolicy = DockerImagePullPolicy.Always,
+				Ports = service.Ports,
+				Volumes = service.Volumes,
+				DependsOn = service.DependsOn,
+				Environment = service.Environment,
+				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>(),
+				Labels = isAdminUiService && routePlan?.Labels != null
+					? new Dictionary<string, string>(routePlan.Labels, StringComparer.Ordinal)
+					: new Dictionary<string, string>(StringComparer.Ordinal)
+			});
+		}
+
+		return new DockerDeploymentPlan()
+		{
+			PluginId = descriptor.PluginId,
+			DeploymentGroup = string.IsNullOrWhiteSpace(descriptor.DeploymentGroup) ? descriptor.PluginId : descriptor.DeploymentGroup,
+			RepositoryRootPath = descriptor.RepositoryRootPath,
+			ComposeFilePath = descriptor.ComposeArtifactFullPath,
+			SharedEnvironmentVariables = Array.Empty<PluginEnvironmentVariable>(),
+			ResolvedSharedEnvironmentVariables = Array.Empty<PluginResolvedEnvironmentVariable>(),
+			Services = services
+		};
 	}
 }
