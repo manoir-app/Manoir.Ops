@@ -11,6 +11,7 @@ namespace MaNoir.PlatformOps.Provider.Docker;
 
 public static class DockerDeploymentPlanFactory
 {
+	private const string AdminUiPublicBasePathEnvironmentVariableName = "MANOIR_ADMINUI_PUBLIC_BASE_PATH";
 	private static readonly Regex EnvironmentVariableReferenceRegex = new Regex(@"\$\{(?<name>[A-Za-z0-9_]+)\}", RegexOptions.Compiled);
 	private static readonly Regex TraefikResourceNameRegex = new Regex(@"[^a-z0-9-]+", RegexOptions.Compiled);
 
@@ -200,12 +201,41 @@ public static class DockerDeploymentPlanFactory
 				});
 			}
 
+			AppendAdminUiRuntimeEnvironment(plan, service, resolvedEnvironment);
+
 			service.ResolvedEnvironment = resolvedEnvironment;
 		}
 
 		if (errors.Count > 0)
 			throw new DockerComposeEnvironmentResolutionException(errors);
 	}
+
+	private static void AppendAdminUiRuntimeEnvironment(DockerDeploymentPlan plan, DockerDeploymentServicePlan service, List<DockerResolvedEnvironmentEntry> resolvedEnvironment)
+	{
+		if (plan == null || service == null || resolvedEnvironment == null)
+			return;
+
+		string publicBasePath = ExtractAdminUiPathPrefix(service);
+		if (string.IsNullOrWhiteSpace(publicBasePath))
+			return;
+
+		resolvedEnvironment.RemoveAll(entry => string.Equals(entry?.Name, AdminUiPublicBasePathEnvironmentVariableName, StringComparison.Ordinal));
+		resolvedEnvironment.Add(new DockerResolvedEnvironmentEntry()
+		{
+			Name = AdminUiPublicBasePathEnvironmentVariableName,
+			Value = publicBasePath
+		});
+	}
+
+	private static string ExtractAdminUiPathPrefix(DockerDeploymentServicePlan service)
+	{
+		if (service?.Labels == null)
+			return null;
+
+		KeyValuePair<string, string> match = service.Labels.FirstOrDefault(pair => pair.Key.EndsWith(".stripprefix.prefixes", StringComparison.Ordinal));
+		return string.IsNullOrWhiteSpace(match.Value) ? null : match.Value;
+	}
+
 
 	private static IReadOnlyDictionary<string, string> CreateServiceLabels(PluginDeploymentDescriptor descriptor, DockerComposeService service)
 	{

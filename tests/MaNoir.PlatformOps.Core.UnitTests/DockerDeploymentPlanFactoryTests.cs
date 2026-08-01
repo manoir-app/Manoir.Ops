@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MaNoir.PlatformOps.Core;
@@ -267,6 +268,44 @@ services:
 		Assert.AreEqual("/sarah", plan.Services[0].Labels["traefik.http.middlewares.sarah-api-admin-ui-strip-prefix.stripprefix.prefixes"]);
 		Assert.AreEqual("8080", plan.Services[0].Labels["traefik.http.services.sarah-api-admin-ui.loadbalancer.server.port"]);
 		Assert.AreEqual(0, plan.Services[1].Labels.Count);
+	}
+
+	[TestMethod]
+	public async Task CreateAsync_ShouldInjectAdminUiPublicBasePathIntoAdminUiServiceEnvironment()
+	{
+		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");
+		using EnvironmentVariableScope saltScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.SecretsSaltEnvironmentVariableName, "AAECAwQFBgcICQoLDA0ODxAREhM=");
+		using EnvironmentVariableScope authJwtSigningKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.AuthJwtSigningKeyEnvironmentVariableName, "12345678901234567890123456789012");
+		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerPlatformRuntimeEnvironment.DevelopmentInstanceEnvironmentVariableName, null);
+
+		PluginDeploymentDescriptor descriptor = new PluginDeploymentDescriptor()
+		{
+			PluginId = "sarah",
+			ComposeArtifactFullPath = "compose.yml",
+			AdminUiPathPrefix = "/sarah",
+			AdminUiServiceName = "api",
+			AdminUiServicePort = 8080,
+			EnvironmentVariables = Array.Empty<PluginEnvironmentVariable>()
+		};
+
+		DockerComposeFile composeFile = DockerComposeParser.Parse(@"
+services:
+  api:
+    image: manoir/sarah-api:2.3.1
+    environment:
+      PLUGIN_ID: sarah
+  worker:
+    image: manoir/sarah-worker:2.3.1
+");
+
+		DockerDeploymentPlan plan = await DockerDeploymentPlanFactory.CreateAsync(
+			descriptor,
+			composeFile,
+			(secretName, cancellationToken) => Task.FromResult<string>(null),
+			default);
+
+		CollectionAssert.Contains((System.Collections.ICollection)plan.Services[0].ResolvedEnvironment.Select(entry => entry.Name + "=" + entry.Value).ToArray(), "MANOIR_ADMINUI_PUBLIC_BASE_PATH=/sarah");
+		Assert.AreEqual(0, plan.Services[1].ResolvedEnvironment.Count(entry => string.Equals(entry.Name, "MANOIR_ADMINUI_PUBLIC_BASE_PATH", StringComparison.Ordinal)));
 	}
 
 	[TestMethod]
