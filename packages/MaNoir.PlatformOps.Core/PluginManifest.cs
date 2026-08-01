@@ -155,8 +155,6 @@ public sealed class PluginManifestAdminUiExposure
 {
 	public string PathPrefix { get; set; }
 
-	public string ComposeService { get; set; }
-
 	public string Service { get; set; }
 
 	public int Port { get; set; }

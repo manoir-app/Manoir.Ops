@@ -9,8 +9,11 @@ namespace MaNoir.PlatformOps.Core;
 
 public static class PluginManifestParser
 {
-	internal const string AdminUiPageContributionKind = "adminui.page";
-	internal const string IntegrationContributionKind = "integration";
+	private static readonly HashSet<string> SupportedContributionKinds = new HashSet<string>(StringComparer.Ordinal)
+	{
+		"AdminUiPage",
+		"Integration"
+	};
 
 	private static readonly HashSet<string> SupportedAccessLevels = new HashSet<string>(StringComparer.Ordinal)
 	{
@@ -175,49 +178,22 @@ public static class PluginManifestParser
 			ValidateLocalizedMap(contribution.Label, prefix + ".label", errors);
 			ValidateLocalizedMap(contribution.Description, prefix + ".description", errors);
 
-			string normalizedContributionKind = NormalizeContributionKind(contribution.Kind);
-			if (!string.IsNullOrWhiteSpace(contribution.Kind) && normalizedContributionKind == null)
+			if (!string.IsNullOrWhiteSpace(contribution.Kind) && !SupportedContributionKinds.Contains(contribution.Kind))
 				errors.Add(prefix + ".kind is not supported.");
 
-			if (normalizedContributionKind != null)
-				contribution.Kind = normalizedContributionKind;
-
-			if (IsAdminUiPageContributionKind(normalizedContributionKind))
+			if (string.Equals(contribution.Kind, "AdminUiPage", StringComparison.Ordinal))
 				ValidateAdminUiContribution(contribution.AdminUi, prefix + ".adminUi", errors);
 
-			if (IsIntegrationContributionKind(normalizedContributionKind))
+			if (string.Equals(contribution.Kind, "Integration", StringComparison.Ordinal))
 				ValidateIntegrationContribution(contribution.Integration, prefix + ".integration", errors);
 		}
-	}
-
-	internal static bool IsAdminUiPageContributionKind(string contributionKind)
-	{
-		return string.Equals(contributionKind, AdminUiPageContributionKind, StringComparison.Ordinal);
-	}
-
-	internal static bool IsIntegrationContributionKind(string contributionKind)
-	{
-		return string.Equals(contributionKind, IntegrationContributionKind, StringComparison.Ordinal);
-	}
-
-	private static string NormalizeContributionKind(string contributionKind)
-	{
-		if (string.IsNullOrWhiteSpace(contributionKind))
-			return null;
-
-		return contributionKind.Trim() switch
-		{
-			"adminui.page" or "AdminUiPage" => AdminUiPageContributionKind,
-			"integration" or "Integration" => IntegrationContributionKind,
-			_ => null
-		};
 	}
 
 	private static void ValidateAdminUiContribution(PluginManifestAdminUiContribution adminUi, string prefix, List<string> errors)
 	{
 		if (adminUi == null)
 		{
-			errors.Add(prefix + " is required for an adminui.page contribution.");
+			errors.Add(prefix + " is required for an AdminUiPage contribution.");
 			return;
 		}
 
@@ -261,7 +237,7 @@ public static class PluginManifestParser
 	{
 		if (integration == null)
 		{
-			errors.Add(prefix + " is required for an integration contribution.");
+			errors.Add(prefix + " is required for an Integration contribution.");
 			return;
 		}
 
@@ -328,12 +304,7 @@ public static class PluginManifestParser
 			return;
 
 		RequireValue(adminUi.PathPrefix, "deployment.adminUi.pathPrefix", errors);
-
-		if (!string.IsNullOrWhiteSpace(adminUi.ComposeService) && !string.IsNullOrWhiteSpace(adminUi.Service)
-			&& !string.Equals(adminUi.ComposeService.Trim(), adminUi.Service.Trim(), StringComparison.Ordinal))
-		{
-			errors.Add("deployment.adminUi.composeService and deployment.adminUi.service must match when both are provided.");
-		}
+		RequireValue(adminUi.Service, "deployment.adminUi.service", errors);
 
 		if (!string.IsNullOrWhiteSpace(adminUi.PathPrefix) && !adminUi.PathPrefix.StartsWith("/", StringComparison.Ordinal))
 			errors.Add("deployment.adminUi.pathPrefix must start with '/'.");

@@ -23,7 +23,7 @@ deployment:
   group: home-automation
   adminUi:
     pathPrefix: /home-automation
-    composeService: admin-ui
+    service: admin-ui
     port: 8080
   artifacts:
     - kind: compose

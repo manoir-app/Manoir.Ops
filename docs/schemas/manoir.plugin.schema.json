@@ -306,6 +306,7 @@
       "additionalProperties": false,
       "required": [
         "pathPrefix",
+        "service",
         "port"
       ],
       "properties": {
@@ -314,15 +315,9 @@
           "minLength": 1,
           "pattern": "^/"
         },
-        "composeService": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Docker Compose service name that serves the AdminUi. Optional when the compose artifact declares a single service."
-        },
         "service": {
           "type": "string",
-          "minLength": 1,
-          "description": "Legacy alias for composeService."
+          "minLength": 1
         },
         "port": {
           "type": "integer",
@@ -346,8 +341,6 @@
         },
         "kind": {
           "enum": [
-            "adminui.page",
-            "integration",
             "AdminUiPage",
             "Integration"
           ]
@@ -383,10 +376,7 @@
           "if": {
             "properties": {
               "kind": {
-                "enum": [
-                  "adminui.page",
-                  "AdminUiPage"
-                ]
+                "const": "AdminUiPage"
               }
             }
           },
@@ -400,10 +390,7 @@
           "if": {
             "properties": {
               "kind": {
-                "enum": [
-                  "integration",
-                  "Integration"
-                ]
+                "const": "Integration"
               }
             }
           },

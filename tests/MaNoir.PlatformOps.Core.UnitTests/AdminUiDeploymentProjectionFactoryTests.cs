@@ -22,7 +22,7 @@ plugin:
 catalog:
   contributions:
     - id: sarah.admin.pages
-      kind: adminui.page
+      kind: AdminUiPage
       label:
         fr-FR: Sarah Admin Pages
       adminUi:
@@ -38,7 +38,7 @@ catalog:
 deployment:
   adminUi:
     pathPrefix: /home-automation
-    composeService: admin-ui
+    service: admin-ui
     port: 8080
 ");
 
@@ -68,7 +68,7 @@ plugin:
 catalog:
   contributions:
     - id: sarah.admin.pages
-      kind: adminui.page
+      kind: AdminUiPage
       label:
         fr-FR: Sarah Admin Pages
       adminUi:
@@ -84,7 +84,7 @@ catalog:
 deployment:
   adminUi:
     pathPrefix: /home-automation
-    composeService: admin-ui
+    service: admin-ui
     port: 8080
 ");
 
