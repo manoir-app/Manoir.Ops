@@ -229,8 +229,15 @@ public static class DockerDeploymentPlanFactory
 		if (service?.Labels == null)
 			return null;
 
-		KeyValuePair<string, string> match = service.Labels.FirstOrDefault(pair => pair.Key.EndsWith(".stripprefix.prefixes", StringComparison.Ordinal));
-		return string.IsNullOrWhiteSpace(match.Value) ? null : match.Value;
+		KeyValuePair<string, string> match = service.Labels.FirstOrDefault(pair =>
+			pair.Key.StartsWith("traefik.http.routers.", StringComparison.Ordinal)
+			&& pair.Key.EndsWith(".rule", StringComparison.Ordinal)
+			&& pair.Value.StartsWith("PathPrefix(`", StringComparison.Ordinal)
+			&& pair.Value.EndsWith("`)", StringComparison.Ordinal));
+		if (string.IsNullOrWhiteSpace(match.Value))
+			return null;
+
+		return match.Value.Substring("PathPrefix(`".Length, match.Value.Length - "PathPrefix(`".Length - 2);
 	}
 
 
