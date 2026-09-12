@@ -398,6 +398,11 @@
       </article>
 
       <article class="card panel span-12">
+        <h2>Routage AdminUi</h2>
+        <div id="routeList" class="service-list"></div>
+      </article>
+
+      <article class="card panel span-12">
         <h2>Journal Gaia</h2>
         <ul id="gaiaLog" class="list"></ul>
       </article>
@@ -424,6 +429,7 @@
     const environmentErrors = document.getElementById('environmentErrors');
     const requiredPlugins = document.getElementById('requiredPlugins');
     const serviceList = document.getElementById('serviceList');
+    const routeList = document.getElementById('routeList');
     const gaiaLog = document.getElementById('gaiaLog');
 
     async function callApi(url, method, body) {
@@ -459,10 +465,13 @@
     }
 
     async function fetchDashboardData() {
-      return callApi('/api/ops/gaia/state', 'GET');
+      return Promise.all([
+        callApi('/api/ops/gaia/state', 'GET'),
+        callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET')
+      ]);
     }
 
-    function renderState(state) {
+    function renderState(state, routeDiagnostics) {
       const status = state?.lastStatus;
       const dockerOk = !!status?.isDockerAvailable;
       const envOk = (status?.environmentErrors?.length || 0) === 0;
@@ -536,6 +545,32 @@
         serviceList.appendChild(card);
       });
 
+      routeList.innerHTML = '';
+      if (!routeDiagnostics?.length) {
+        routeList.innerHTML = '<div class="empty">Aucune route AdminUi calculée pour l’instant.</div>';
+      } else {
+        routeDiagnostics.forEach(route => {
+          const isError = !!route.error;
+          const badgeClass = isError ? 'badge bad' : route.localUrl ? 'badge' : 'badge warn';
+          const badgeText = isError ? 'Erreur' : route.localUrl ? 'Routable' : 'Calculé';
+          const card = document.createElement('article');
+          card.className = 'service';
+          card.innerHTML = isError
+            ? `<div><h3>${route.repositoryRootPath || 'Plugin'}</h3><div class="service-meta mono">Erreur: ${route.error}</div></div><div class="${badgeClass}">${badgeText}</div>`
+            : `<div>
+                <h3>${route.pluginDisplayName || route.pluginId}</h3>
+                <div class="service-meta mono">Plugin: ${route.pluginId}</div>
+                <div class="service-meta mono">Path prefix: ${route.publicBasePath}</div>
+                <div class="service-meta mono">Service compose: ${route.composeServiceName}</div>
+                <div class="service-meta mono">Port container: ${route.servicePort}</div>
+                <div class="service-meta mono">Router rule: ${route.routerRule}</div>
+                <div class="service-meta mono">Ressource Traefik: ${route.traefikResourceName}</div>
+                <div class="service-meta mono">URL locale: ${route.localUrl || 'Traefik actif mais port local encore indisponible'}</div>
+              </div><div class="${badgeClass}">${badgeText}</div>`;
+          routeList.appendChild(card);
+        });
+      }
+
       gaiaLog.innerHTML = '';
       const logLines = [];
       if (state?.lastError) logLines.push(state.lastError);
@@ -558,8 +593,8 @@
     async function refreshState() {
       setBusy(true);
       try {
-        const state = await fetchDashboardData();
-        renderDashboard(state);
+        const [state, routeDiagnostics] = await fetchDashboardData();
+        renderState(state, routeDiagnostics);
       } catch (error) {
         gaiaLog.innerHTML = '<li>' + error.message + '</li>';
       } finally {
@@ -571,7 +606,8 @@
       setBusy(true);
       try {
         const state = await callApi('/api/ops/gaia/ensure-minimum-vital', 'POST');
-        renderDashboard(state);
+        const routeDiagnostics = await callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET');
+        renderState(state, routeDiagnostics);
       } catch (error) {
         gaiaLog.innerHTML = '<li>' + error.message + '</li>';
       } finally {
@@ -583,7 +619,8 @@
       setBusy(true);
       try {
         const state = await callApi('/api/ops/gaia/refresh-and-restart-all-plugins', 'POST');
-        renderDashboard(state);
+        const routeDiagnostics = await callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET');
+        renderState(state, routeDiagnostics);
       } catch (error) {
         gaiaLog.innerHTML = '<li>' + error.message + '</li>';
       } finally {
@@ -608,7 +645,8 @@
       try {
         const wipeData = wipeDataCheckbox.checked;
         const state = await callApi('/api/ops/gaia/reset-shared-services', 'POST', { wipeData });
-        renderDashboard(state);
+        const routeDiagnostics = await callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET');
+        renderState(state, routeDiagnostics);
       } catch (error) {
         gaiaLog.innerHTML = '<li>' + error.message + '</li>';
       } finally {

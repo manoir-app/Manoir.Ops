@@ -55,6 +55,61 @@ public sealed class GaiaOperationsService
 		return _lastAdminUiDeploymentDiffs;
 	}
 
+	public async Task<IReadOnlyList<GaiaAdminUiRouteDiagnostic>> GetAdminUiRouteDiagnosticsAsync(CancellationToken cancellationToken = default)
+	{
+		if (_lastStatus == null)
+			await InspectAsync(cancellationToken);
+
+		string localProxyBaseUrl = ResolveLocalProxyBaseUrl(_lastStatus);
+		string pluginRepositoriesRootPath = ResolvePluginRepositoriesRootPath();
+		string[] pluginRepositoryRoots = EnumeratePluginRepositoryRoots(pluginRepositoriesRootPath).ToArray();
+		List<GaiaAdminUiRouteDiagnostic> diagnostics = new List<GaiaAdminUiRouteDiagnostic>();
+
+		foreach (string repositoryRootPath in pluginRepositoryRoots)
+		{
+			try
+			{
+				PluginDeploymentDescriptor descriptor = PluginRepositoryDeploymentLoader.Load(repositoryRootPath);
+				GaiaAdminUiRouteDiagnostic diagnostic = CreateAdminUiRouteDiagnostic(descriptor, localProxyBaseUrl, repositoryRootPath);
+				if (diagnostic != null)
+					diagnostics.Add(diagnostic);
+			}
+			catch (Exception exception)
+			{
+				diagnostics.Add(new GaiaAdminUiRouteDiagnostic()
+				{
+					RepositoryRootPath = repositoryRootPath,
+					Error = exception.Message
+				});
+			}
+		}
+
+		bool hasPlatformDiagnostic = diagnostics.Any(diagnostic => string.Equals(diagnostic.PluginId, PlatformCoreCatalogPluginLoader.PlatformPluginId, StringComparison.OrdinalIgnoreCase));
+		string platformError = null;
+		if (!hasPlatformDiagnostic
+			&& PlatformCoreCatalogPluginLoader.TryLoad(pluginRepositoriesRootPath, out PluginDeploymentDescriptor platformDescriptor, out platformError))
+		{
+			GaiaAdminUiRouteDiagnostic diagnostic = CreateAdminUiRouteDiagnostic(platformDescriptor, localProxyBaseUrl, platformDescriptor.RepositoryRootPath);
+			if (diagnostic != null)
+				diagnostics.Add(diagnostic);
+		}
+		else if (!hasPlatformDiagnostic
+			&& !string.IsNullOrWhiteSpace(platformError))
+		{
+			diagnostics.Add(new GaiaAdminUiRouteDiagnostic()
+			{
+				PluginId = PlatformCoreCatalogPluginLoader.PlatformPluginId,
+				PluginDisplayName = "Platform Core",
+				RepositoryRootPath = pluginRepositoriesRootPath,
+				Error = platformError
+			});
+		}
+
+		return diagnostics
+			.OrderBy(diagnostic => diagnostic.PluginId ?? diagnostic.RepositoryRootPath, StringComparer.OrdinalIgnoreCase)
+			.ToArray();
+	}
+
 	public bool IsMinimumVitalReady => _lastStatus?.HasMinimumVital == true;
 
 	public Task InitializePluginRepositoriesAsync(CancellationToken cancellationToken = default)
@@ -361,6 +416,66 @@ public sealed class GaiaOperationsService
 			.ToArray();
 	}
 
+	private static GaiaAdminUiRouteDiagnostic CreateAdminUiRouteDiagnostic(PluginDeploymentDescriptor descriptor, string localProxyBaseUrl, string repositoryRootPath)
+	{
+		DockerAdminUiRoutePlan routePlan = DockerDeploymentPlanFactory.CreateAdminUiRoutePlan(descriptor);
+		if (routePlan == null)
+			return null;
+
+		return new GaiaAdminUiRouteDiagnostic()
+		{
+			PluginId = descriptor.PluginId,
+			PluginDisplayName = descriptor.DisplayName,
+			RepositoryRootPath = repositoryRootPath,
+			PublicBasePath = routePlan.PublicBasePath,
+			ComposeServiceName = routePlan.ComposeServiceName,
+			ServicePort = routePlan.ServicePort,
+			TraefikResourceName = routePlan.TraefikResourceName,
+			RouterRule = routePlan.RouterRule,
+			LocalUrl = CombineLocalUrl(localProxyBaseUrl, routePlan.PublicBasePath),
+			Labels = routePlan.Labels
+		};
+	}
+
+	private static string ResolveLocalProxyBaseUrl(DockerFirstRunStatus status)
+	{
+		DockerSharedServiceStatus traefikService = status?.SharedServices?
+			.FirstOrDefault(service => string.Equals(service?.ServiceName, "traefik", StringComparison.OrdinalIgnoreCase) && service.IsRunning);
+
+		int? hostPort = TryResolveTcpHostPort(traefikService?.PublishedPorts);
+		if (!hostPort.HasValue)
+			return null;
+
+		return hostPort.Value == 80 ? "http://127.0.0.1" : "http://127.0.0.1:" + hostPort.Value;
+	}
+
+	private static int? TryResolveTcpHostPort(IReadOnlyList<string> publishedPorts)
+	{
+		foreach (string publishedPort in publishedPorts ?? Array.Empty<string>())
+		{
+			if (string.IsNullOrWhiteSpace(publishedPort))
+				continue;
+
+			string[] protocolParts = publishedPort.Split('/');
+			if (protocolParts.Length != 2 || !string.Equals(protocolParts[1], "tcp", StringComparison.OrdinalIgnoreCase))
+				continue;
+
+			string[] bindingParts = protocolParts[0].Split(':');
+			if (bindingParts.Length == 2 && int.TryParse(bindingParts[0], out int hostPort) && hostPort > 0)
+				return hostPort;
+		}
+
+		return null;
+	}
+
+	private static string CombineLocalUrl(string baseUrl, string publicBasePath)
+	{
+		if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(publicBasePath))
+			return null;
+
+		return baseUrl.TrimEnd('/') + publicBasePath;
+	}
+
 	private static IReadOnlyList<AdminUiDeploymentDiff> BuildAdminUiDeploymentDiffs(IReadOnlyList<AdminUiDeploymentProjection> previousDeployments, IReadOnlyList<AdminUiDeploymentProjection> currentDeployments)
 	{
 		Dictionary<string, AdminUiDeploymentProjection> previousByPluginId = (previousDeployments ?? Array.Empty<AdminUiDeploymentProjection>())
@@ -389,4 +504,29 @@ public sealed class GaiaDashboardState
 	public DateTimeOffset? LastEnsureUtc { get; set; }
 
 	public string LastError { get; set; }
+}
+
+public sealed class GaiaAdminUiRouteDiagnostic
+{
+	public string PluginId { get; set; }
+
+	public string PluginDisplayName { get; set; }
+
+	public string RepositoryRootPath { get; set; }
+
+	public string PublicBasePath { get; set; }
+
+	public string ComposeServiceName { get; set; }
+
+	public int ServicePort { get; set; }
+
+	public string TraefikResourceName { get; set; }
+
+	public string RouterRule { get; set; }
+
+	public string LocalUrl { get; set; }
+
+	public IReadOnlyDictionary<string, string> Labels { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
+
+	public string Error { get; set; }
 }

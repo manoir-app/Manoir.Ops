@@ -23,6 +23,7 @@ app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 app.MapGet("/api/ops/gaia/state", async (GaiaOperationsService gaia, CancellationToken cancellationToken) => Results.Ok(await gaia.GetStateAsync(cancellationToken)));
 app.MapGet("/api/ops/gaia/admin-ui-deployments", async (GaiaOperationsService gaia, CancellationToken cancellationToken) => Results.Ok(await gaia.GetAdminUiDeploymentsAsync(cancellationToken)));
 app.MapGet("/api/ops/gaia/admin-ui-deployment-diffs", async (GaiaOperationsService gaia, CancellationToken cancellationToken) => Results.Ok(await gaia.GetAdminUiDeploymentDiffsAsync(cancellationToken)));
+app.MapGet("/api/ops/gaia/admin-ui-route-diagnostics", async (GaiaOperationsService gaia, CancellationToken cancellationToken) => Results.Ok(await gaia.GetAdminUiRouteDiagnosticsAsync(cancellationToken)));
 app.MapPost("/api/ops/gaia/inspect", async (GaiaOperationsService gaia, CancellationToken cancellationToken) => Results.Ok(await gaia.InspectAsync(cancellationToken)));
 app.MapPost("/api/ops/gaia/ensure-minimum-vital", async (GaiaOperationsService gaia, CancellationToken cancellationToken) => Results.Ok(await gaia.EnsureMinimumVitalAsync(cancellationToken)));
 app.MapPost("/api/ops/gaia/ensure-shared-services", async (GaiaOperationsService gaia, CancellationToken cancellationToken) => Results.Ok(await gaia.EnsureSharedServicesAsync(cancellationToken)));

@@ -163,9 +163,18 @@ public static class DockerCoreServiceCatalog
 			AdminUiServicePort = DefaultCoreAdminUiServicePort
 		});
 
-		return routePlan?.Labels == null
+		Dictionary<string, string> labels = routePlan?.Labels == null
 			? new Dictionary<string, string>(StringComparer.Ordinal)
 			: new Dictionary<string, string>(routePlan.Labels, StringComparer.Ordinal);
+
+		labels["traefik.http.routers.platform-core-admin-ui-root.rule"] = "Path(`/`)";
+		labels["traefik.http.routers.platform-core-admin-ui-root.entrypoints"] = "web";
+		labels["traefik.http.routers.platform-core-admin-ui-root.middlewares"] = "platform-core-admin-ui-root-redirect";
+		labels["traefik.http.routers.platform-core-admin-ui-root.service"] = "platform-core-admin-ui";
+		labels["traefik.http.middlewares.platform-core-admin-ui-root-redirect.redirectregex.regex"] = "^/$";
+		labels["traefik.http.middlewares.platform-core-admin-ui-root-redirect.redirectregex.replacement"] = "/platform";
+		labels["traefik.http.middlewares.platform-core-admin-ui-root-redirect.redirectregex.permanent"] = "false";
+		return labels;
 	}
 
 	private static bool TryLoadPlatformCoreDescriptor(string platformRootPath, out PluginDeploymentDescriptor descriptor, out string error)
