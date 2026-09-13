@@ -284,6 +284,8 @@ public static class DockerRuntimeSpecFactory
 
 	private static string ResolveBindMountSource(string source, string composeDirectoryPath)
 	{
+		source = ResolveDockerHostBindMountSource(source);
+
 		if (Path.IsPathRooted(source))
 			return Path.GetFullPath(source);
 
@@ -291,6 +293,20 @@ public static class DockerRuntimeSpecFactory
 			return source;
 
 		return Path.GetFullPath(Path.Combine(composeDirectoryPath ?? string.Empty, source));
+	}
+
+	private static string ResolveDockerHostBindMountSource(string source)
+	{
+		string homeAutomationRootPath = DockerSharedServicesCatalog.HomeAutomationRootContainerPath;
+		if (!string.Equals(source, homeAutomationRootPath, StringComparison.Ordinal)
+			&& !source.StartsWith(homeAutomationRootPath + "/", StringComparison.Ordinal))
+		{
+			return source;
+		}
+
+		string dockerHostHomeAutomationRootPath = DockerSharedServicesCatalog.ResolveDockerHostHomeAutomationRootPath(
+			"/home-automation/shared-services");
+		return dockerHostHomeAutomationRootPath + source.Substring(homeAutomationRootPath.Length);
 	}
 
 	private static bool IsWindowsAbsoluteBindMountSource(string source)

@@ -155,6 +155,7 @@ public sealed class DockerSharedServicesCatalogTests
 		{
 			DockerDeploymentPlan plan = DockerSharedServicesCatalog.CreateDeploymentPlan(sharedServicesRootPath);
 			DockerDeploymentServicePlan mqttPlan = plan.Services.Single(service => service.Name == "mqtt");
+			DockerDeploymentServicePlan traefikPlan = plan.Services.Single(service => service.Name == "traefik");
 
 			CollectionAssert.AreEqual(
 				new[]
@@ -164,6 +165,9 @@ public sealed class DockerSharedServicesCatalogTests
 					Path.Combine(dockerHostRootPath, "mqtt", "log") + ":/mosquitto/log"
 				},
 				mqttPlan.Volumes.ToArray());
+			CollectionAssert.Contains(
+				(System.Collections.ICollection)traefikPlan.Volumes,
+				Path.Combine(dockerHostRootPath, "traefik", "config", "traefik.yml") + ":/etc/traefik/traefik.yml:ro");
 			Assert.IsTrue(File.Exists(Path.Combine(sharedServicesRootPath, "mqtt", "config", "mosquitto.conf")));
 		}
 		finally

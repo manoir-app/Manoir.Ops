@@ -334,4 +334,5 @@ services:
 		Assert.AreEqual("ghcr.io/manoir-app/sarah-worker:dev", plan.Services[1].Image);
 		Assert.AreEqual("ghcr.io/manoir-app/sarah-ui:dev", plan.Services[2].Image);
 	}
+
 }

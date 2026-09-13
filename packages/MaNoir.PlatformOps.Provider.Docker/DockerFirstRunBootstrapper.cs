@@ -287,6 +287,7 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 	private async Task<bool> PullAndDetectImageUpdateAsync(string imageReference, string currentImageId, CancellationToken cancellationToken)
 	{
 		(string repository, string tag) = SplitImageReference(imageReference);
+		Console.WriteLine("[Docker image refresh] ExpectedImage='" + imageReference + "'; FromImage='" + repository + "'; Tag='" + tag + "'.");
 		await PullImageWithRetriesAsync(repository, tag, cancellationToken);
 
 		ImageInspectResponse image = await _dockerClient.Images.InspectImageAsync(imageReference, cancellationToken);

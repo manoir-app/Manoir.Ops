@@ -110,6 +110,37 @@ public sealed class DockerRuntimeSpecFactoryTests
 	}
 
 	[TestMethod]
+	public void Create_ShouldTranslateContainerHomeAutomationBindMountToDockerHostPath()
+	{
+		string dockerHostSharedServicesRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "shared-services");
+		using EnvironmentVariableScope hostRootScope = new EnvironmentVariableScope(
+			DockerSharedServicesCatalog.SharedServicesHostRootPathEnvironmentVariableName,
+			dockerHostSharedServicesRootPath);
+
+		DockerDeploymentPlan plan = new DockerDeploymentPlan()
+		{
+			PluginId = DockerSharedServicesCatalog.SharedServicesPluginId,
+			RepositoryRootPath = "/home-automation/shared-services",
+			Services =
+			[
+				new DockerDeploymentServicePlan()
+				{
+					Name = "traefik",
+					Image = DockerSharedServicesCatalog.DefaultTraefikImage,
+					Volumes = ["/home-automation/shared-services/traefik/config/traefik.yml:/etc/traefik/traefik.yml:ro"],
+					ResolvedEnvironment = []
+				}
+			]
+		};
+
+		DockerRuntimeSpec spec = DockerRuntimeSpecFactory.Create(plan, Array.Empty<int>());
+
+		Assert.AreEqual(
+			Path.Combine(dockerHostSharedServicesRootPath, "traefik", "config", "traefik.yml"),
+			spec.Services[0].Mounts[0].Source);
+	}
+
+	[TestMethod]
 	public void Create_ShouldRejectBuildContextBecauseExecutorOnlySupportsImages()
 	{
 		DockerDeploymentPlan plan = new DockerDeploymentPlan()
