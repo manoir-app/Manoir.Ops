@@ -38,7 +38,7 @@ catalog:
 deployment:
   adminUi:
     pathPrefix: /home-automation
-    composeService: admin-ui
+    service: admin-ui
     port: 8080
 ");
 
@@ -84,7 +84,7 @@ catalog:
 deployment:
   adminUi:
     pathPrefix: /home-automation
-    composeService: admin-ui
+    service: admin-ui
     port: 8080
 ");
 

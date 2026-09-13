@@ -15,26 +15,19 @@ public sealed class GaiaOperationsService
 	private readonly GaiaOptions _options;
 	private readonly ILogger<GaiaOperationsService> _logger;
 	private readonly GaiaRuntimeStateStore _runtimeStateStore;
-	private readonly GaiaPluginRepositoryManager _pluginRepositoryManager;
 	private readonly SemaphoreSlim _gate = new SemaphoreSlim(1, 1);
 	private DockerFirstRunStatus _lastStatus;
 	private DateTimeOffset? _lastInspectionUtc;
 	private DateTimeOffset? _lastEnsureUtc;
-	private DateTimeOffset? _lastPluginRepositorySyncUtc;
 	private string _lastError;
 	private IReadOnlyList<AdminUiDeploymentProjection> _lastAdminUiDeployments = Array.Empty<AdminUiDeploymentProjection>();
 	private IReadOnlyList<AdminUiDeploymentDiff> _lastAdminUiDeploymentDiffs = Array.Empty<AdminUiDeploymentDiff>();
-	private IReadOnlyList<string> _configuredPluginRepositoryUrls = Array.Empty<string>();
-	private IReadOnlyList<GaiaManagedPluginRepositoryState> _managedPluginRepositories = Array.Empty<GaiaManagedPluginRepositoryState>();
-	private IReadOnlyList<string> _lastPluginRepositorySyncMessages = Array.Empty<string>();
-	private IReadOnlyList<string> _lastPluginRepositorySyncErrors = Array.Empty<string>();
 
 	public GaiaOperationsService(GaiaOptions options, ILogger<GaiaOperationsService> logger)
 	{
 		_options = options ?? throw new ArgumentNullException(nameof(options));
 		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 		_runtimeStateStore = new GaiaRuntimeStateStore(ResolveRuntimeStatePath());
-		_pluginRepositoryManager = new GaiaPluginRepositoryManager();
 		TryLoadPersistedRuntimeState();
 	}
 
@@ -77,23 +70,9 @@ public sealed class GaiaOperationsService
 			try
 			{
 				PluginDeploymentDescriptor descriptor = PluginRepositoryDeploymentLoader.Load(repositoryRootPath);
-				DockerAdminUiRoutePlan routePlan = DockerDeploymentPlanFactory.CreateAdminUiRoutePlan(descriptor);
-				if (routePlan == null)
-					continue;
-
-				diagnostics.Add(new GaiaAdminUiRouteDiagnostic()
-				{
-					PluginId = descriptor.PluginId,
-					PluginDisplayName = descriptor.DisplayName,
-					RepositoryRootPath = repositoryRootPath,
-					PublicBasePath = routePlan.PublicBasePath,
-					ComposeServiceName = routePlan.ComposeServiceName,
-					ServicePort = routePlan.ServicePort,
-					TraefikResourceName = routePlan.TraefikResourceName,
-					RouterRule = routePlan.RouterRule,
-					LocalUrl = CombineLocalUrl(localProxyBaseUrl, routePlan.PublicBasePath),
-					Labels = routePlan.Labels
-				});
+				GaiaAdminUiRouteDiagnostic diagnostic = CreateAdminUiRouteDiagnostic(descriptor, localProxyBaseUrl, repositoryRootPath);
+				if (diagnostic != null)
+					diagnostics.Add(diagnostic);
 			}
 			catch (Exception exception)
 			{
@@ -105,93 +84,37 @@ public sealed class GaiaOperationsService
 			}
 		}
 
+		bool hasPlatformDiagnostic = diagnostics.Any(diagnostic => string.Equals(diagnostic.PluginId, PlatformCoreCatalogPluginLoader.PlatformPluginId, StringComparison.OrdinalIgnoreCase));
+		string platformError = null;
+		if (!hasPlatformDiagnostic
+			&& PlatformCoreCatalogPluginLoader.TryLoad(pluginRepositoriesRootPath, out PluginDeploymentDescriptor platformDescriptor, out platformError))
+		{
+			GaiaAdminUiRouteDiagnostic diagnostic = CreateAdminUiRouteDiagnostic(platformDescriptor, localProxyBaseUrl, platformDescriptor.RepositoryRootPath);
+			if (diagnostic != null)
+				diagnostics.Add(diagnostic);
+		}
+		else if (!hasPlatformDiagnostic
+			&& !string.IsNullOrWhiteSpace(platformError))
+		{
+			diagnostics.Add(new GaiaAdminUiRouteDiagnostic()
+			{
+				PluginId = PlatformCoreCatalogPluginLoader.PlatformPluginId,
+				PluginDisplayName = "Platform Core",
+				RepositoryRootPath = pluginRepositoriesRootPath,
+				Error = platformError
+			});
+		}
+
 		return diagnostics
 			.OrderBy(diagnostic => diagnostic.PluginId ?? diagnostic.RepositoryRootPath, StringComparer.OrdinalIgnoreCase)
 			.ToArray();
 	}
 
-	public Task<GaiaPluginRepositoriesSnapshot> GetPluginRepositoriesAsync(CancellationToken cancellationToken = default)
-	{
-		cancellationToken.ThrowIfCancellationRequested();
-		return Task.FromResult(CreatePluginRepositoriesSnapshot());
-	}
+	public bool IsMinimumVitalReady => _lastStatus?.HasMinimumVital == true;
 
-	public async Task<GaiaPluginRepositoriesSnapshot> UpdatePluginRepositoriesAsync(IReadOnlyList<string> repositoryUrls, CancellationToken cancellationToken = default)
+	public Task InitializePluginRepositoriesAsync(CancellationToken cancellationToken = default)
 	{
-		await _gate.WaitAsync(cancellationToken);
-		try
-		{
-			_configuredPluginRepositoryUrls = GaiaPluginRepositoryManager.NormalizeRepositoryUrls(repositoryUrls);
-			GaiaPluginRepositorySyncResult syncResult = await SynchronizeConfiguredPluginRepositoriesAsync(force: true, cancellationToken);
-			_logger.LogInformation(
-				"Gaia plugin repository configuration updated. RepositoryCount={RepositoryCount}, SyncErrors={SyncErrors}.",
-				ResolvePluginRepositoryConfiguration().RepositoryUrls.Count,
-				syncResult.Errors.Count);
-			return CreatePluginRepositoriesSnapshot();
-		}
-		catch (Exception exception)
-		{
-			_lastError = exception.Message;
-			_logger.LogError(exception, "Gaia could not update the plugin repository configuration.");
-			throw;
-		}
-		finally
-		{
-			_gate.Release();
-		}
-	}
-
-	public async Task<GaiaPluginRepositoriesSnapshot> ResyncPluginRepositoriesAsync(CancellationToken cancellationToken = default)
-	{
-		await _gate.WaitAsync(cancellationToken);
-		try
-		{
-			GaiaPluginRepositorySyncResult syncResult = await SynchronizeConfiguredPluginRepositoriesAsync(force: true, cancellationToken);
-			_logger.LogInformation(
-				"Gaia plugin repository resync completed. RepositoryCount={RepositoryCount}, SyncErrors={SyncErrors}.",
-				ResolvePluginRepositoryConfiguration().RepositoryUrls.Count,
-				syncResult.Errors.Count);
-			return CreatePluginRepositoriesSnapshot();
-		}
-		catch (Exception exception)
-		{
-			_lastError = exception.Message;
-			_logger.LogError(exception, "Gaia could not resynchronize the configured plugin repositories.");
-			throw;
-		}
-		finally
-		{
-			_gate.Release();
-		}
-	}
-
-	public async Task InitializePluginRepositoriesAsync(CancellationToken cancellationToken = default)
-	{
-		await _gate.WaitAsync(cancellationToken);
-		try
-		{
-			if (!_pluginRepositoryManager.IsPluginCatalogEmpty(ResolvePluginRepositoriesRootPath()))
-			{
-				_logger.LogInformation("Gaia startup repository sync skipped because the local plugin catalog is already populated.");
-				return;
-			}
-
-			GaiaPluginRepositorySyncResult syncResult = await SynchronizeConfiguredPluginRepositoriesAsync(force: true, cancellationToken);
-			_logger.LogInformation(
-				"Gaia startup repository sync completed. RepositoryCount={RepositoryCount}, SyncErrors={SyncErrors}.",
-				ResolvePluginRepositoryConfiguration().RepositoryUrls.Count,
-				syncResult.Errors.Count);
-		}
-		catch (Exception exception)
-		{
-			_lastError = exception.Message;
-			_logger.LogError(exception, "Gaia could not initialize the plugin repositories on startup.");
-			throw;
-		}
-		finally
-		{
-			_gate.Release();
-		}
+		return Task.CompletedTask;
 	}
 
 	public async Task<GaiaDashboardState> InspectAsync(CancellationToken cancellationToken = default)
@@ -202,7 +125,6 @@ public sealed class GaiaOperationsService
 			_logger.LogInformation("Gaia inspection started.");
 			using DockerFirstRunBootstrapper bootstrapper = new DockerFirstRunBootstrapper(_options.SharedServicesRootPath);
 			DockerFirstRunStatus status = await bootstrapper.InspectAsync(cancellationToken);
-			ApplyRequiredPluginAvailability(status);
 			ApplyStatus(status, isEnsureOperation: false);
 			_logger.LogInformation(
 				"Gaia inspection completed. DockerAvailable={DockerAvailable}, NeedsMinimumVitalDeployment={NeedsMinimumVitalDeployment}, OperationErrors={OperationErrors}.",
@@ -236,7 +158,6 @@ public sealed class GaiaOperationsService
 			_logger.LogInformation("Gaia ensure cycle started.");
 			using DockerFirstRunBootstrapper bootstrapper = new DockerFirstRunBootstrapper(_options.SharedServicesRootPath);
 			DockerFirstRunStatus status = await bootstrapper.EnsureMinimumVitalAsync(cancellationToken);
-			ApplyRequiredPluginAvailability(status);
 			ApplyStatus(status, isEnsureOperation: true);
 
 			if (status.OperationMessages.Count > 0)
@@ -279,7 +200,6 @@ public sealed class GaiaOperationsService
 			_logger.LogWarning("Gaia shared services reset started. WipeData={WipeData}.", wipeData);
 			using DockerFirstRunBootstrapper bootstrapper = new DockerFirstRunBootstrapper(_options.SharedServicesRootPath);
 			DockerFirstRunStatus status = await bootstrapper.ResetSharedServicesAsync(wipeData, cancellationToken);
-			ApplyRequiredPluginAvailability(status);
 			ApplyStatus(status, isEnsureOperation: true);
 
 			foreach (string operationMessage in status.OperationMessages)
@@ -359,7 +279,6 @@ public sealed class GaiaOperationsService
 			refreshedStatus.DeployedPlugins = deployedPlugins;
 			refreshedStatus.OperationMessages = operationMessages;
 			refreshedStatus.OperationErrors = operationErrors;
-			ApplyRequiredPluginAvailability(refreshedStatus);
 			_lastAdminUiDeploymentDiffs = BuildAdminUiDeploymentDiffs(_lastAdminUiDeployments, currentAdminUiDeployments);
 			_lastAdminUiDeployments = currentAdminUiDeployments;
 
@@ -405,132 +324,6 @@ public sealed class GaiaOperationsService
 			_lastError = status?.DockerError;
 	}
 
-	private void ApplyRequiredPluginAvailability(DockerFirstRunStatus status)
-	{
-		if (status == null)
-			return;
-
-		RequiredPluginAvailabilityEvaluation evaluation = LocalPluginCatalogInspector.EvaluateRequiredPlugins(ResolvePluginRepositoriesRootPath(), _options.RequiredPluginIds);
-		status.MissingRequiredPluginIds = evaluation.MissingRequiredPluginIds ?? Array.Empty<string>();
-
-		List<string> operationErrors = new List<string>(status.OperationErrors ?? Array.Empty<string>());
-		if (evaluation.Errors?.Count > 0)
-			operationErrors.AddRange(evaluation.Errors);
-
-		foreach (string pluginId in evaluation.MissingRequiredPluginIds ?? Array.Empty<string>())
-			operationErrors.Add("Required plugin '" + pluginId + "' is not available under '" + ResolvePluginRepositoriesRootPath() + "'.");
-
-		status.OperationErrors = operationErrors
-			.Distinct(StringComparer.Ordinal)
-			.ToArray();
-	}
-
-	private async Task<GaiaPluginRepositorySyncResult> SynchronizeConfiguredPluginRepositoriesAsync(bool force, CancellationToken cancellationToken)
-	{
-		GaiaPluginRepositoryConfiguration configuration = ResolvePluginRepositoryConfiguration();
-		if (!force && !_pluginRepositoryManager.IsPluginCatalogEmpty(ResolvePluginRepositoriesRootPath()))
-		{
-			return new GaiaPluginRepositorySyncResult()
-			{
-				ManagedRepositories = _managedPluginRepositories,
-				Messages = ["Gaia plugin repository sync skipped because the local plugin catalog is not empty."],
-				Errors = _lastPluginRepositorySyncErrors,
-				SynchronizedAtUtc = _lastPluginRepositorySyncUtc
-			};
-		}
-
-		GaiaPluginRepositorySyncResult result = await _pluginRepositoryManager.SyncAsync(
-			ResolvePluginRepositoriesRootPath(),
-			configuration.RepositoryUrls,
-			_managedPluginRepositories,
-			cancellationToken);
-
-		ApplyPluginRepositorySyncResult(result);
-		await RefreshRuntimeStatusAsync(cancellationToken);
-		TryPersistRuntimeState();
-		return result;
-	}
-
-	private void ApplyPluginRepositorySyncResult(GaiaPluginRepositorySyncResult result)
-	{
-		_lastPluginRepositorySyncUtc = result?.SynchronizedAtUtc ?? DateTimeOffset.UtcNow;
-		_managedPluginRepositories = result?.ManagedRepositories?.ToArray() ?? Array.Empty<GaiaManagedPluginRepositoryState>();
-		_lastPluginRepositorySyncMessages = result?.Messages?.ToArray() ?? Array.Empty<string>();
-		_lastPluginRepositorySyncErrors = result?.Errors?.ToArray() ?? Array.Empty<string>();
-
-		if (_lastPluginRepositorySyncErrors.Count > 0)
-			_lastError = string.Join(" | ", _lastPluginRepositorySyncErrors);
-	}
-
-	private async Task RefreshRuntimeStatusAsync(CancellationToken cancellationToken)
-	{
-		using DockerFirstRunBootstrapper bootstrapper = new DockerFirstRunBootstrapper(_options.SharedServicesRootPath);
-		DockerFirstRunStatus status = await bootstrapper.InspectAsync(cancellationToken);
-		ApplyRequiredPluginAvailability(status);
-
-		List<string> operationMessages = new List<string>(status.OperationMessages ?? Array.Empty<string>());
-		operationMessages.AddRange(_lastPluginRepositorySyncMessages ?? Array.Empty<string>());
-		status.OperationMessages = operationMessages
-			.Distinct(StringComparer.Ordinal)
-			.ToArray();
-
-		List<string> operationErrors = new List<string>(status.OperationErrors ?? Array.Empty<string>());
-		operationErrors.AddRange(_lastPluginRepositorySyncErrors ?? Array.Empty<string>());
-		status.OperationErrors = operationErrors
-			.Distinct(StringComparer.Ordinal)
-			.ToArray();
-
-		ApplyStatus(status, isEnsureOperation: false);
-	}
-
-	private GaiaPluginRepositoryConfiguration ResolvePluginRepositoryConfiguration()
-	{
-		return _pluginRepositoryManager.ResolveConfiguration(_configuredPluginRepositoryUrls);
-	}
-
-	private GaiaPluginRepositoriesSnapshot CreatePluginRepositoriesSnapshot()
-	{
-		GaiaPluginRepositoryConfiguration configuration = ResolvePluginRepositoryConfiguration();
-		string pluginRepositoriesRootPath = ResolvePluginRepositoriesRootPath();
-		string managedRepositoriesRootPath = GaiaPluginRepositoryManager.ResolveManagedRepositoriesRootPath(pluginRepositoriesRootPath);
-
-		IReadOnlyList<GaiaPluginRepositoryEntry> repositories = configuration.RepositoryUrls
-			.Select(repositoryUrl =>
-			{
-				GaiaManagedPluginRepositoryState managedRepository = (_managedPluginRepositories ?? Array.Empty<GaiaManagedPluginRepositoryState>())
-					.FirstOrDefault(repository => string.Equals(repository?.RepositoryUrl, repositoryUrl, StringComparison.OrdinalIgnoreCase));
-				string localDirectoryName = managedRepository?.LocalDirectoryName;
-				string localPath = string.IsNullOrWhiteSpace(localDirectoryName)
-					? null
-					: Path.Combine(managedRepositoriesRootPath, localDirectoryName);
-
-				return new GaiaPluginRepositoryEntry()
-				{
-					RepositoryUrl = repositoryUrl,
-					LocalDirectoryName = localDirectoryName,
-					LocalPath = localPath,
-					Exists = !string.IsNullOrWhiteSpace(localPath) && Directory.Exists(localPath),
-					IsManaged = !string.IsNullOrWhiteSpace(localDirectoryName)
-				};
-			})
-			.OrderBy(repository => repository.RepositoryUrl, StringComparer.OrdinalIgnoreCase)
-			.ToArray();
-
-		return new GaiaPluginRepositoriesSnapshot()
-		{
-			PluginRepositoriesRootPath = pluginRepositoriesRootPath,
-			ManagedRepositoriesRootPath = managedRepositoriesRootPath,
-			ConfigurationSource = configuration.Source,
-			UsesDefaultRepository = configuration.UsesDefaultRepository,
-			IsPluginCatalogEmpty = _pluginRepositoryManager.IsPluginCatalogEmpty(pluginRepositoriesRootPath),
-			LastSynchronizedUtc = _lastPluginRepositorySyncUtc,
-			ConfiguredRepositoryUrls = configuration.RepositoryUrls,
-			Repositories = repositories,
-			LastSyncMessages = _lastPluginRepositorySyncMessages,
-			LastSyncErrors = _lastPluginRepositorySyncErrors
-		};
-	}
-
 	private GaiaDashboardState CreateSnapshot()
 	{
 		return new GaiaDashboardState()
@@ -555,13 +348,8 @@ public sealed class GaiaOperationsService
 
 			_lastInspectionUtc = state.LastInspectionUtc;
 			_lastEnsureUtc = state.LastEnsureUtc;
-			_lastPluginRepositorySyncUtc = state.LastPluginRepositorySyncUtc;
 			_lastAdminUiDeployments = state.AdminUiDeployments ?? Array.Empty<AdminUiDeploymentProjection>();
 			_lastAdminUiDeploymentDiffs = state.AdminUiDeploymentDiffs ?? Array.Empty<AdminUiDeploymentDiff>();
-			_configuredPluginRepositoryUrls = GaiaPluginRepositoryManager.NormalizeRepositoryUrls(state.ConfiguredPluginRepositoryUrls);
-			_managedPluginRepositories = state.ManagedPluginRepositories ?? Array.Empty<GaiaManagedPluginRepositoryState>();
-			_lastPluginRepositorySyncMessages = state.LastPluginRepositorySyncMessages ?? Array.Empty<string>();
-			_lastPluginRepositorySyncErrors = state.LastPluginRepositorySyncErrors ?? Array.Empty<string>();
 			_logger.LogInformation("Gaia runtime state restored from {StateFilePath}.", _runtimeStateStore.StateFilePath);
 		}
 		catch (Exception exception)
@@ -578,13 +366,8 @@ public sealed class GaiaOperationsService
 			{
 				LastInspectionUtc = _lastInspectionUtc,
 				LastEnsureUtc = _lastEnsureUtc,
-				LastPluginRepositorySyncUtc = _lastPluginRepositorySyncUtc,
 				AdminUiDeployments = _lastAdminUiDeployments?.ToArray() ?? Array.Empty<AdminUiDeploymentProjection>(),
-				AdminUiDeploymentDiffs = _lastAdminUiDeploymentDiffs?.ToArray() ?? Array.Empty<AdminUiDeploymentDiff>(),
-				ConfiguredPluginRepositoryUrls = _configuredPluginRepositoryUrls?.ToArray() ?? Array.Empty<string>(),
-				ManagedPluginRepositories = _managedPluginRepositories?.ToArray() ?? Array.Empty<GaiaManagedPluginRepositoryState>(),
-				LastPluginRepositorySyncMessages = _lastPluginRepositorySyncMessages?.ToArray() ?? Array.Empty<string>(),
-				LastPluginRepositorySyncErrors = _lastPluginRepositorySyncErrors?.ToArray() ?? Array.Empty<string>()
+				AdminUiDeploymentDiffs = _lastAdminUiDeploymentDiffs?.ToArray() ?? Array.Empty<AdminUiDeploymentDiff>()
 			});
 		}
 		catch (Exception exception)
@@ -633,16 +416,25 @@ public sealed class GaiaOperationsService
 			.ToArray();
 	}
 
-	private static IReadOnlyList<AdminUiDeploymentDiff> BuildAdminUiDeploymentDiffs(IReadOnlyList<AdminUiDeploymentProjection> previousDeployments, IReadOnlyList<AdminUiDeploymentProjection> currentDeployments)
+	private static GaiaAdminUiRouteDiagnostic CreateAdminUiRouteDiagnostic(PluginDeploymentDescriptor descriptor, string localProxyBaseUrl, string repositoryRootPath)
 	{
-		Dictionary<string, AdminUiDeploymentProjection> previousByPluginId = (previousDeployments ?? Array.Empty<AdminUiDeploymentProjection>())
-			.Where(deployment => !string.IsNullOrWhiteSpace(deployment?.PluginId))
-			.ToDictionary(deployment => deployment.PluginId, StringComparer.Ordinal);
+		DockerAdminUiRoutePlan routePlan = DockerDeploymentPlanFactory.CreateAdminUiRoutePlan(descriptor);
+		if (routePlan == null)
+			return null;
 
-		return (currentDeployments ?? Array.Empty<AdminUiDeploymentProjection>())
-			.Select(current => AdminUiDeploymentDiffFactory.Create(previousByPluginId.TryGetValue(current.PluginId, out AdminUiDeploymentProjection previous) ? previous : null, current))
-			.OrderBy(diff => diff.PluginId, StringComparer.Ordinal)
-			.ToArray();
+		return new GaiaAdminUiRouteDiagnostic()
+		{
+			PluginId = descriptor.PluginId,
+			PluginDisplayName = descriptor.DisplayName,
+			RepositoryRootPath = repositoryRootPath,
+			PublicBasePath = routePlan.PublicBasePath,
+			ComposeServiceName = routePlan.ComposeServiceName,
+			ServicePort = routePlan.ServicePort,
+			TraefikResourceName = routePlan.TraefikResourceName,
+			RouterRule = routePlan.RouterRule,
+			LocalUrl = CombineLocalUrl(localProxyBaseUrl, routePlan.PublicBasePath),
+			Labels = routePlan.Labels
+		};
 	}
 
 	private static string ResolveLocalProxyBaseUrl(DockerFirstRunStatus status)
@@ -654,9 +446,7 @@ public sealed class GaiaOperationsService
 		if (!hostPort.HasValue)
 			return null;
 
-		return hostPort.Value == 80
-			? "http://127.0.0.1"
-			: "http://127.0.0.1:" + hostPort.Value;
+		return hostPort.Value == 80 ? "http://127.0.0.1" : "http://127.0.0.1:" + hostPort.Value;
 	}
 
 	private static int? TryResolveTcpHostPort(IReadOnlyList<string> publishedPorts)
@@ -671,10 +461,7 @@ public sealed class GaiaOperationsService
 				continue;
 
 			string[] bindingParts = protocolParts[0].Split(':');
-			if (bindingParts.Length != 2)
-				continue;
-
-			if (int.TryParse(bindingParts[0], out int hostPort) && hostPort > 0)
+			if (bindingParts.Length == 2 && int.TryParse(bindingParts[0], out int hostPort) && hostPort > 0)
 				return hostPort;
 		}
 
@@ -687,6 +474,18 @@ public sealed class GaiaOperationsService
 			return null;
 
 		return baseUrl.TrimEnd('/') + publicBasePath;
+	}
+
+	private static IReadOnlyList<AdminUiDeploymentDiff> BuildAdminUiDeploymentDiffs(IReadOnlyList<AdminUiDeploymentProjection> previousDeployments, IReadOnlyList<AdminUiDeploymentProjection> currentDeployments)
+	{
+		Dictionary<string, AdminUiDeploymentProjection> previousByPluginId = (previousDeployments ?? Array.Empty<AdminUiDeploymentProjection>())
+			.Where(deployment => !string.IsNullOrWhiteSpace(deployment?.PluginId))
+			.ToDictionary(deployment => deployment.PluginId, StringComparer.Ordinal);
+
+		return (currentDeployments ?? Array.Empty<AdminUiDeploymentProjection>())
+			.Select(current => AdminUiDeploymentDiffFactory.Create(previousByPluginId.TryGetValue(current.PluginId, out AdminUiDeploymentProjection previous) ? previous : null, current))
+			.OrderBy(diff => diff.PluginId, StringComparer.Ordinal)
+			.ToArray();
 	}
 }
 

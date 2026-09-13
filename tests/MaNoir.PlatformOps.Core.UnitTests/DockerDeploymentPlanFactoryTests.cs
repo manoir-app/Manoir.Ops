@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MaNoir.PlatformOps.Core;
@@ -17,6 +18,7 @@ public sealed class DockerDeploymentPlanFactoryTests
 		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");
 		using EnvironmentVariableScope saltScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.SecretsSaltEnvironmentVariableName, "AAECAwQFBgcICQoLDA0ODxAREhM=");
 		using EnvironmentVariableScope authJwtSigningKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.AuthJwtSigningKeyEnvironmentVariableName, "12345678901234567890123456789012");
+		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerPlatformRuntimeEnvironment.DevelopmentInstanceEnvironmentVariableName, null);
 
 		try
 		{
@@ -82,6 +84,7 @@ services:
 		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");
 		using EnvironmentVariableScope saltScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.SecretsSaltEnvironmentVariableName, "AAECAwQFBgcICQoLDA0ODxAREhM=");
 		using EnvironmentVariableScope authJwtSigningKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.AuthJwtSigningKeyEnvironmentVariableName, "12345678901234567890123456789012");
+		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerPlatformRuntimeEnvironment.DevelopmentInstanceEnvironmentVariableName, null);
 
 		ArgumentException exception = Assert.ThrowsException<ArgumentException>(() => DockerDeploymentPlanFactory.Create(new PluginDeploymentDescriptor()
 		{
@@ -97,6 +100,7 @@ services:
 		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, null);
 		using EnvironmentVariableScope saltScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.SecretsSaltEnvironmentVariableName, null);
 		using EnvironmentVariableScope authJwtSigningKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.AuthJwtSigningKeyEnvironmentVariableName, null);
+		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerPlatformRuntimeEnvironment.DevelopmentInstanceEnvironmentVariableName, null);
 
 		PlatformOpsSecretsRuntimeConfigurationException exception = Assert.ThrowsException<PlatformOpsSecretsRuntimeConfigurationException>(() => DockerDeploymentPlanFactory.Create(new PluginDeploymentDescriptor()
 		{
@@ -115,6 +119,7 @@ services:
 		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");
 		using EnvironmentVariableScope saltScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.SecretsSaltEnvironmentVariableName, "AAECAwQFBgcICQoLDA0ODxAREhM=");
 		using EnvironmentVariableScope authJwtSigningKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.AuthJwtSigningKeyEnvironmentVariableName, "12345678901234567890123456789012");
+		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerPlatformRuntimeEnvironment.DevelopmentInstanceEnvironmentVariableName, null);
 
 		PluginDeploymentDescriptor descriptor = new PluginDeploymentDescriptor()
 		{
@@ -151,6 +156,7 @@ services:
 		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");
 		using EnvironmentVariableScope saltScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.SecretsSaltEnvironmentVariableName, "AAECAwQFBgcICQoLDA0ODxAREhM=");
 		using EnvironmentVariableScope authJwtSigningKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.AuthJwtSigningKeyEnvironmentVariableName, "12345678901234567890123456789012");
+		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerPlatformRuntimeEnvironment.DevelopmentInstanceEnvironmentVariableName, null);
 
 		PluginDeploymentDescriptor descriptor = new PluginDeploymentDescriptor()
 		{
@@ -185,6 +191,7 @@ services:
 		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");
 		using EnvironmentVariableScope saltScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.SecretsSaltEnvironmentVariableName, "AAECAwQFBgcICQoLDA0ODxAREhM=");
 		using EnvironmentVariableScope authJwtSigningKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.AuthJwtSigningKeyEnvironmentVariableName, "12345678901234567890123456789012");
+		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerPlatformRuntimeEnvironment.DevelopmentInstanceEnvironmentVariableName, null);
 
 		PluginDeploymentDescriptor descriptor = new PluginDeploymentDescriptor()
 		{
@@ -219,6 +226,7 @@ services:
 		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");
 		using EnvironmentVariableScope saltScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.SecretsSaltEnvironmentVariableName, "AAECAwQFBgcICQoLDA0ODxAREhM=");
 		using EnvironmentVariableScope authJwtSigningKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.AuthJwtSigningKeyEnvironmentVariableName, "12345678901234567890123456789012");
+		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerPlatformRuntimeEnvironment.DevelopmentInstanceEnvironmentVariableName, null);
 
 		DockerDeploymentPlan plan = DockerDeploymentPlanFactory.Create(new PluginDeploymentDescriptor()
 		{
@@ -235,6 +243,7 @@ services:
 		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");
 		using EnvironmentVariableScope saltScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.SecretsSaltEnvironmentVariableName, "AAECAwQFBgcICQoLDA0ODxAREhM=");
 		using EnvironmentVariableScope authJwtSigningKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.AuthJwtSigningKeyEnvironmentVariableName, "12345678901234567890123456789012");
+		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerPlatformRuntimeEnvironment.DevelopmentInstanceEnvironmentVariableName, null);
 
 		DockerDeploymentPlan plan = DockerDeploymentPlanFactory.Create(new PluginDeploymentDescriptor()
 		{
@@ -254,8 +263,75 @@ services:
 		Assert.AreEqual("true", plan.Services[0].Labels["traefik.enable"]);
 		Assert.AreEqual(DockerRuntimeSpecFactory.SharedNetworkName, plan.Services[0].Labels["traefik.docker.network"]);
 		Assert.AreEqual("PathPrefix(`/sarah`)", plan.Services[0].Labels["traefik.http.routers.sarah-api-admin-ui.rule"]);
+		Assert.AreEqual("sarah-api-admin-ui-strip-prefix", plan.Services[0].Labels["traefik.http.routers.sarah-api-admin-ui.middlewares"]);
 		Assert.AreEqual("sarah-api-admin-ui", plan.Services[0].Labels["traefik.http.routers.sarah-api-admin-ui.service"]);
+		Assert.AreEqual("/sarah", plan.Services[0].Labels["traefik.http.middlewares.sarah-api-admin-ui-strip-prefix.stripprefix.prefixes"]);
 		Assert.AreEqual("8080", plan.Services[0].Labels["traefik.http.services.sarah-api-admin-ui.loadbalancer.server.port"]);
 		Assert.AreEqual(0, plan.Services[1].Labels.Count);
+	}
+
+	[TestMethod]
+	public async Task CreateAsync_ShouldInjectAdminUiPublicBasePathIntoAdminUiServiceEnvironment()
+	{
+		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");
+		using EnvironmentVariableScope saltScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.SecretsSaltEnvironmentVariableName, "AAECAwQFBgcICQoLDA0ODxAREhM=");
+		using EnvironmentVariableScope authJwtSigningKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.AuthJwtSigningKeyEnvironmentVariableName, "12345678901234567890123456789012");
+		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerPlatformRuntimeEnvironment.DevelopmentInstanceEnvironmentVariableName, null);
+
+		PluginDeploymentDescriptor descriptor = new PluginDeploymentDescriptor()
+		{
+			PluginId = "sarah",
+			ComposeArtifactFullPath = "compose.yml",
+			AdminUiPathPrefix = "/sarah",
+			AdminUiServiceName = "api",
+			AdminUiServicePort = 8080,
+			EnvironmentVariables = Array.Empty<PluginEnvironmentVariable>()
+		};
+
+		DockerComposeFile composeFile = DockerComposeParser.Parse(@"
+services:
+  api:
+    image: manoir/sarah-api:2.3.1
+    environment:
+      PLUGIN_ID: sarah
+  worker:
+    image: manoir/sarah-worker:2.3.1
+");
+
+		DockerDeploymentPlan plan = await DockerDeploymentPlanFactory.CreateAsync(
+			descriptor,
+			composeFile,
+			(secretName, cancellationToken) => Task.FromResult<string>(null),
+			default);
+
+		CollectionAssert.Contains((System.Collections.ICollection)plan.Services[0].ResolvedEnvironment.Select(entry => entry.Name + "=" + entry.Value).ToArray(), "MANOIR_ADMINUI_PUBLIC_BASE_PATH=/sarah");
+		Assert.AreEqual(0, plan.Services[1].ResolvedEnvironment.Count(entry => string.Equals(entry.Name, "MANOIR_ADMINUI_PUBLIC_BASE_PATH", StringComparison.Ordinal)));
+	}
+
+	[TestMethod]
+	public void Create_ShouldRewriteAllPluginImageTagsToDevForDevelopmentInstance()
+	{
+		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");
+		using EnvironmentVariableScope saltScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.SecretsSaltEnvironmentVariableName, "AAECAwQFBgcICQoLDA0ODxAREhM=");
+		using EnvironmentVariableScope authJwtSigningKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.AuthJwtSigningKeyEnvironmentVariableName, "12345678901234567890123456789012");
+		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerPlatformRuntimeEnvironment.DevelopmentInstanceEnvironmentVariableName, "true");
+
+		DockerDeploymentPlan plan = DockerDeploymentPlanFactory.Create(new PluginDeploymentDescriptor()
+		{
+			PluginId = "sarah",
+			ComposeArtifactFullPath = "compose.yml"
+		}, DockerComposeParser.Parse(@"
+services:
+  api:
+    image: ghcr.io/manoir-app/sarah-api:latest
+  worker:
+    image: ghcr.io/manoir-app/sarah-worker:2.3.1
+  ui:
+    image: ghcr.io/manoir-app/sarah-ui
+"));
+
+		Assert.AreEqual("ghcr.io/manoir-app/sarah-api:dev", plan.Services[0].Image);
+		Assert.AreEqual("ghcr.io/manoir-app/sarah-worker:dev", plan.Services[1].Image);
+		Assert.AreEqual("ghcr.io/manoir-app/sarah-ui:dev", plan.Services[2].Image);
 	}
 }

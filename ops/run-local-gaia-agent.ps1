@@ -13,6 +13,9 @@ param(
 	[string]$DockerSocketSource,
 	[string[]]$PluginsRepo,
 	[int]$EnsureIntervalSeconds = 300,
+	[bool]$EnableObservability = $true,
+	[string]$OtelTracesEndpoint = "http://tempo:4318",
+	[string]$OtelLogsEndpoint = "http://loki:3100/otlp",
 	[switch]$ProductionInstance
 )
 
@@ -23,7 +26,15 @@ function New-RandomBase64String {
 	param([int]$ByteCount = 32)
 
 	$bytes = New-Object byte[] $ByteCount
-	[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+	$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+	try {
+		$rng.GetBytes($bytes)
+	}
+	finally {
+		if ($null -ne $rng) {
+			$rng.Dispose()
+		}
+	}
 	return [Convert]::ToBase64String($bytes)
 }
 
@@ -81,7 +92,7 @@ if ([string]::IsNullOrWhiteSpace($AuthJwtSigningKey)) {
 	$AuthJwtSigningKey = New-RandomBase64String -ByteCount 32
 }
 
-$hostOs = if ($IsWindows) { "windows" } elseif ($IsLinux) { "linux" } else { "unknown" }
+$hostOs = if ($env:OS -eq "Windows_NT") { "windows" } elseif (Test-Path "/proc/version") { "linux" } else { "unknown" }
 if ($hostOs -eq "unknown") {
 	throw "This script only supports PowerShell on Windows or Linux hosts."
 }
@@ -112,8 +123,27 @@ if ($LASTEXITCODE -ne 0) {
 
 $DockerSocketSource = Resolve-DockerSocketSource -RequestedSource $DockerSocketSource -DockerServerOs $serverOs -HostOperatingSystem $hostOs
 
-& $dockerCommand.Source container inspect $ContainerName *> $null
-if ($LASTEXITCODE -eq 0) {
+
+$sharedNetworkName = "manoir"
+$existingNetworkNames = & $dockerCommand.Source network ls --format "{{.Name}}"
+if ($LASTEXITCODE -ne 0) {
+	throw "Unable to query existing Docker networks."
+}
+
+if (-not ($existingNetworkNames | Where-Object { $_.Trim() -eq $sharedNetworkName })) {
+	Write-Host "Creating Docker network '$sharedNetworkName'."
+	& $dockerCommand.Source network create $sharedNetworkName | Out-Null
+	if ($LASTEXITCODE -ne 0) {
+		throw "The Docker network '$sharedNetworkName' could not be created."
+	}
+}
+
+$existingContainerNames = & $dockerCommand.Source container ls --all --format "{{.Names}}"
+if ($LASTEXITCODE -ne 0) {
+	throw "Unable to query existing Docker containers."
+}
+
+if ($existingContainerNames | Where-Object { $_.Trim() -eq $ContainerName }) {
 	Write-Host "Removing existing container '$ContainerName'."
 	& $dockerCommand.Source rm --force $ContainerName | Out-Null
 	if ($LASTEXITCODE -ne 0) {
@@ -130,6 +160,7 @@ $dockerArgs = @(
 	"run",
 	"--detach",
 	"--name", $ContainerName,
+	"--network", $sharedNetworkName,
 	"--restart", "unless-stopped",
 	"--publish", "${WebPort}:8080",
 	"--mount", "type=bind,source=$DockerSocketSource,target=/var/run/docker.sock",
@@ -161,6 +192,13 @@ if ($PluginsRepo -and $PluginsRepo.Count -gt 0) {
 	}
 }
 
+if ($EnableObservability) {
+	$dockerArgs += @("--env", "MANOIR_OBSERVABILITY_ENABLED=true")
+	$dockerArgs += @("--env", "MANOIR_OTEL_TRACES_ENDPOINT=$OtelTracesEndpoint")
+	$dockerArgs += @("--env", "MANOIR_OTEL_LOGS_ENDPOINT=$OtelLogsEndpoint")
+	$dockerArgs += @("--env", "MANOIR_PROMETHEUS_METRICS_PATH=/metrics")
+}
+
 $dockerArgs += $imageReference
 
 Write-Host "Starting '$ContainerName' from '$imageReference' on host OS '$hostOs'."
@@ -190,3 +228,10 @@ Write-Host "Gaia plugin repositories path: $pluginRepositoriesContainerPath"
 Write-Host "MANOIR_PLUGINS_REPO=$($PluginsRepo -join ',')"
 Write-Host "Development instance: $isDevelopmentInstance"
 Write-Host "Docker socket source: $DockerSocketSource"
+Write-Host "Observability enabled: $EnableObservability"
+if ($EnableObservability) {
+	Write-Host "OTLP traces endpoint: $OtelTracesEndpoint"
+	Write-Host "OTLP logs endpoint: $OtelLogsEndpoint"
+	Write-Host "Grafana: http://127.0.0.1:3000"
+	Write-Host "Prometheus: http://127.0.0.1:9090"
+}

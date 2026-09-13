@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Docker.DotNet;
@@ -12,12 +13,14 @@ namespace MaNoir.PlatformOps.Provider.Docker;
 
 public sealed class DockerFirstRunBootstrapper : IDisposable
 {
+	private const int ImagePullRetryCount = 3;
+
 	private readonly DockerClient _dockerClient;
 	private readonly string _sharedServicesRootPath;
 	private readonly Func<DockerDeploymentPlan, CancellationToken, Task<DockerDeploymentExecutionResult>> _applyDeploymentAsync;
 
 	public DockerFirstRunBootstrapper(string sharedServicesRootPath = null)
-		: this(new DockerClientConfiguration().CreateClient(), sharedServicesRootPath, null)
+		: this(DockerClientFactory.CreateClient(), sharedServicesRootPath, null)
 	{
 	}
 
@@ -30,11 +33,13 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 
 	public async Task<DockerFirstRunStatus> InspectAsync(CancellationToken cancellationToken = default)
 	{
+		List<string> platformCoreErrors = GetPlatformCoreAvailabilityErrors();
 		DockerFirstRunStatus status = new DockerFirstRunStatus()
 		{
 			SharedServices = DockerSharedServicesCatalog.Evaluate(Array.Empty<ContainerListResponse>(), _sharedServicesRootPath),
 			CoreServices = DockerCoreServiceCatalog.Evaluate(Array.Empty<ContainerListResponse>(), _sharedServicesRootPath),
-			EnvironmentErrors = GetEnvironmentErrors()
+			EnvironmentErrors = GetEnvironmentErrors(),
+			OperationErrors = platformCoreErrors
 		};
 
 		try
@@ -47,6 +52,7 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 			status.DockerServerVersion = version?.Version;
 			status.SharedServices = DockerSharedServicesCatalog.Evaluate(containers.ToArray(), _sharedServicesRootPath);
 			status.CoreServices = DockerCoreServiceCatalog.Evaluate(containers.ToArray(), _sharedServicesRootPath);
+			status.OperationErrors = platformCoreErrors;
 			return status;
 		}
 		catch (Exception exception)
@@ -102,6 +108,10 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 				deployedSharedServices.Add(serviceName);
 				operationMessages.Add("Shared service '" + serviceName + "' ensured.");
 			}
+			catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+			{
+				operationErrors.Add("Shared service '" + serviceName + "' could not be ensured: the Docker request timed out after " + (int)DockerClientFactory.ResolveDefaultTimeout().TotalSeconds + " seconds.");
+			}
 			catch (Exception exception)
 			{
 				operationErrors.Add("Shared service '" + serviceName + "' could not be ensured: " + exception.Message);
@@ -113,10 +123,18 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 			operationMessages.Add("Ensuring core service '" + serviceName + "'.");
 			try
 			{
-				DockerDeploymentPlan corePlan = DockerCoreServiceCatalog.CreateDeploymentPlan(_sharedServicesRootPath);
+				string platformCoreError = DockerCoreServiceCatalog.GetPlatformCorePluginAvailabilityError(_sharedServicesRootPath);
+				if (!string.IsNullOrWhiteSpace(platformCoreError))
+					operationErrors.Add(platformCoreError);
+
+				DockerDeploymentPlan corePlan = await DockerCoreServiceCatalog.CreateDeploymentPlanAsync(_sharedServicesRootPath, cancellationToken);
 				await _applyDeploymentAsync(corePlan, cancellationToken);
 				deployedCoreServices.Add(serviceName);
 				operationMessages.Add("Core service '" + serviceName + "' ensured.");
+			}
+			catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+			{
+				operationErrors.Add("Core service '" + serviceName + "' could not be ensured: the Docker request timed out after " + (int)DockerClientFactory.ResolveDefaultTimeout().TotalSeconds + " seconds.");
 			}
 			catch (Exception exception)
 			{
@@ -219,6 +237,14 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 			: errors;
 	}
 
+	private List<string> GetPlatformCoreAvailabilityErrors()
+	{
+		string error = DockerCoreServiceCatalog.GetPlatformCorePluginAvailabilityError(_sharedServicesRootPath);
+		return string.IsNullOrWhiteSpace(error)
+			? new List<string>()
+			: [error];
+	}
+
 	private async Task RefreshMutableImagesAsync(
 		IReadOnlyList<DockerSharedServiceStatus> services,
 		string serviceKind,
@@ -247,6 +273,10 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 				service.MatchesExpectedImage = false;
 				operationMessages.Add("A newer image was pulled for " + serviceKind + " '" + service.ServiceName + "'.");
 			}
+			catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+			{
+				operationErrors.Add("The image refresh check timed out after " + (int)DockerClientFactory.ResolveDefaultTimeout().TotalSeconds + " seconds for " + serviceKind + " '" + service.ServiceName + "'.");
+			}
 			catch (Exception exception)
 			{
 				operationErrors.Add("The image refresh check could not complete for " + serviceKind + " '" + service.ServiceName + "': " + exception.Message);
@@ -257,19 +287,59 @@ public sealed class DockerFirstRunBootstrapper : IDisposable
 	private async Task<bool> PullAndDetectImageUpdateAsync(string imageReference, string currentImageId, CancellationToken cancellationToken)
 	{
 		(string repository, string tag) = SplitImageReference(imageReference);
-		await _dockerClient.Images.CreateImageAsync(
-			new ImagesCreateParameters()
-			{
-				FromImage = repository,
-				Tag = tag
-			},
-			null,
-			new Progress<JSONMessage>(),
-			cancellationToken);
+		await PullImageWithRetriesAsync(repository, tag, cancellationToken);
 
 		ImageInspectResponse image = await _dockerClient.Images.InspectImageAsync(imageReference, cancellationToken);
 		return !string.IsNullOrWhiteSpace(image?.ID)
 			&& !string.Equals(image.ID, currentImageId, StringComparison.OrdinalIgnoreCase);
+	}
+
+	private async Task PullImageWithRetriesAsync(string repository, string tag, CancellationToken cancellationToken)
+	{
+		for (int attempt = 1; ; attempt++)
+		{
+			try
+			{
+				await _dockerClient.Images.CreateImageAsync(
+					new ImagesCreateParameters()
+					{
+						FromImage = repository,
+						Tag = tag
+					},
+					null,
+					new Progress<JSONMessage>(),
+					cancellationToken);
+				return;
+			}
+			catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+			{
+				throw;
+			}
+			catch (Exception exception) when (attempt < ImagePullRetryCount && IsTransientImagePullException(exception))
+			{
+				await Task.Delay(TimeSpan.FromSeconds(attempt), cancellationToken);
+			}
+		}
+	}
+
+	private static bool IsTransientImagePullException(Exception exception)
+	{
+		if (exception is HttpRequestException)
+			return true;
+
+		if (exception is DockerApiException apiException)
+		{
+			string responseBody = apiException.ResponseBody ?? string.Empty;
+			if (responseBody.Contains("EOF", StringComparison.OrdinalIgnoreCase)
+				|| responseBody.Contains("TLS handshake timeout", StringComparison.OrdinalIgnoreCase)
+				|| responseBody.Contains("connection reset", StringComparison.OrdinalIgnoreCase)
+				|| responseBody.Contains("i/o timeout", StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private static (string Repository, string Tag) SplitImageReference(string imageReference)

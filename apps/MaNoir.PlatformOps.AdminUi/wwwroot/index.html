@@ -398,18 +398,6 @@
       </article>
 
       <article class="card panel span-12">
-        <h2>Repos de plugins</h2>
-        <div id="repoMeta" class="repo-meta">Chargement...</div>
-        <textarea id="repoEditor" class="repo-editor" spellcheck="false" placeholder="https://github.com/manoir-app/Manoir.PluginCatalog"></textarea>
-        <div class="repo-toolbar">
-          <button id="saveReposButton" class="btn-primary">Enregistrer la liste</button>
-          <button id="resyncReposButton" class="btn-secondary">Forcer une resynchro</button>
-        </div>
-        <div class="hint">Une URL par ligne. Si la liste sauvegardée est vide, Gaia revient à la variable d'environnement MANOIR_PLUGINS_REPO ou au dépôt par défaut.</div>
-        <div id="repoList" class="service-list repo-list"></div>
-      </article>
-
-      <article class="card panel span-12">
         <h2>Routage AdminUi</h2>
         <div id="routeList" class="service-list"></div>
       </article>
@@ -428,8 +416,6 @@
     const resetButton = document.getElementById('resetButton');
     const confirmResetButton = document.getElementById('confirmResetButton');
     const cancelResetButton = document.getElementById('cancelResetButton');
-    const saveReposButton = document.getElementById('saveReposButton');
-    const resyncReposButton = document.getElementById('resyncReposButton');
     const resetWarning = document.getElementById('resetWarning');
     const wipeDataCheckbox = document.getElementById('wipeDataCheckbox');
     const runtimeDot = document.getElementById('runtimeDot');
@@ -445,9 +431,6 @@
     const serviceList = document.getElementById('serviceList');
     const routeList = document.getElementById('routeList');
     const gaiaLog = document.getElementById('gaiaLog');
-    const repoMeta = document.getElementById('repoMeta');
-    const repoEditor = document.getElementById('repoEditor');
-    const repoList = document.getElementById('repoList');
 
     async function callApi(url, method, body) {
       const options = { method };
@@ -475,62 +458,16 @@
       refreshPluginsButton.disabled = isBusy;
       resetButton.disabled = isBusy;
       confirmResetButton.disabled = isBusy;
-      saveReposButton.disabled = isBusy;
-      resyncReposButton.disabled = isBusy;
     }
 
-    function renderPluginRepositories(snapshot, state) {
-      const minimumVitalReady = !!state?.lastStatus?.hasMinimumVital;
-      const source = snapshot?.configurationSource || '-';
-      const lastSync = formatDate(snapshot?.lastSynchronizedUtc);
-      const repoRoot = snapshot?.pluginRepositoriesRootPath || '-';
-      const managedRoot = snapshot?.managedRepositoriesRootPath || '-';
-      const repoCount = snapshot?.configuredRepositoryUrls?.length || 0;
-
-      repoMeta.innerHTML = `
-        <div><strong>Source active:</strong> ${source}</div>
-        <div><strong>Dernière synchro:</strong> ${lastSync}</div>
-        <div><strong>Catalogue plugins:</strong> ${snapshot?.isPluginCatalogEmpty ? 'vide' : 'présent'}</div>
-        <div><strong>Repos configurés:</strong> ${repoCount}</div>
-        <div><strong>Racine plugins:</strong> <span class="mono">${repoRoot}</span></div>
-        <div><strong>Racine gérée par Gaia:</strong> <span class="mono">${managedRoot}</span></div>
-        <div><strong>Minimum vital:</strong> ${minimumVitalReady ? 'déjà installé' : 'pas encore installé'}</div>`;
-
-      repoEditor.value = (snapshot?.configuredRepositoryUrls || []).join('\n');
-
-      repoList.innerHTML = '';
-      if (!snapshot?.repositories?.length) {
-        repoList.innerHTML = '<div class="empty">Aucun dépôt configuré.</div>';
-        return;
-      }
-
-      snapshot.repositories.forEach(repository => {
-        const badgeClass = repository.exists ? 'badge' : 'badge warn';
-        const badgeText = repository.exists ? 'Synchronisé' : 'À récupérer';
-        const card = document.createElement('article');
-        card.className = 'service';
-        card.innerHTML = `
-          <div>
-            <h3>${repository.repositoryUrl}</h3>
-            <div class="service-meta mono">Répertoire: ${repository.localPath || '-'}</div>
-            <div class="service-meta mono">Nom local: ${repository.localDirectoryName || '-'}</div>
-            <div class="service-meta mono">Gestion Gaia: ${repository.isManaged ? 'oui' : 'non'}</div>
-          </div>
-          <div class="${badgeClass}">${badgeText}</div>`;
-        repoList.appendChild(card);
-      });
-    }
-
-    function renderDashboard(state, routeDiagnostics, repoSnapshot) {
-      renderState(state, routeDiagnostics);
-      renderPluginRepositories(repoSnapshot, state);
+    function renderDashboard(state) {
+      renderState(state);
     }
 
     async function fetchDashboardData() {
       return Promise.all([
         callApi('/api/ops/gaia/state', 'GET'),
-        callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET'),
-        callApi('/api/ops/gaia/plugin-repositories', 'GET')
+        callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET')
       ]);
     }
 
@@ -616,21 +553,11 @@
           const isError = !!route.error;
           const badgeClass = isError ? 'badge bad' : route.localUrl ? 'badge' : 'badge warn';
           const badgeText = isError ? 'Erreur' : route.localUrl ? 'Routable' : 'Calculé';
-          const labelsHtml = isError
-            ? ''
-            : Object.entries(route.labels || {}).map(([key, value]) => `<div class="service-meta mono route-label">${key}: ${value}</div>`).join('');
-
           const card = document.createElement('article');
           card.className = 'service';
           card.innerHTML = isError
-            ? `
-              <div>
-                <h3>${route.repositoryRootPath || 'Plugin'}</h3>
-                <div class="service-meta mono">Erreur: ${route.error}</div>
-              </div>
-              <div class="${badgeClass}">${badgeText}</div>`
-            : `
-              <div>
+            ? `<div><h3>${route.repositoryRootPath || 'Plugin'}</h3><div class="service-meta mono">Erreur: ${route.error}</div></div><div class="${badgeClass}">${badgeText}</div>`
+            : `<div>
                 <h3>${route.pluginDisplayName || route.pluginId}</h3>
                 <div class="service-meta mono">Plugin: ${route.pluginId}</div>
                 <div class="service-meta mono">Path prefix: ${route.publicBasePath}</div>
@@ -639,9 +566,7 @@
                 <div class="service-meta mono">Router rule: ${route.routerRule}</div>
                 <div class="service-meta mono">Ressource Traefik: ${route.traefikResourceName}</div>
                 <div class="service-meta mono">URL locale: ${route.localUrl || 'Traefik actif mais port local encore indisponible'}</div>
-                ${labelsHtml}
-              </div>
-              <div class="${badgeClass}">${badgeText}</div>`;
+              </div><div class="${badgeClass}">${badgeText}</div>`;
           routeList.appendChild(card);
         });
       }
@@ -668,8 +593,8 @@
     async function refreshState() {
       setBusy(true);
       try {
-        const [state, routeDiagnostics, repoSnapshot] = await fetchDashboardData();
-        renderDashboard(state, routeDiagnostics, repoSnapshot);
+        const [state, routeDiagnostics] = await fetchDashboardData();
+        renderState(state, routeDiagnostics);
       } catch (error) {
         gaiaLog.innerHTML = '<li>' + error.message + '</li>';
       } finally {
@@ -681,11 +606,8 @@
       setBusy(true);
       try {
         const state = await callApi('/api/ops/gaia/ensure-minimum-vital', 'POST');
-        const [routeDiagnostics, repoSnapshot] = await Promise.all([
-          callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET'),
-          callApi('/api/ops/gaia/plugin-repositories', 'GET')
-        ]);
-        renderDashboard(state, routeDiagnostics, repoSnapshot);
+        const routeDiagnostics = await callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET');
+        renderState(state, routeDiagnostics);
       } catch (error) {
         gaiaLog.innerHTML = '<li>' + error.message + '</li>';
       } finally {
@@ -697,48 +619,8 @@
       setBusy(true);
       try {
         const state = await callApi('/api/ops/gaia/refresh-and-restart-all-plugins', 'POST');
-        const [routeDiagnostics, repoSnapshot] = await Promise.all([
-          callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET'),
-          callApi('/api/ops/gaia/plugin-repositories', 'GET')
-        ]);
-        renderDashboard(state, routeDiagnostics, repoSnapshot);
-      } catch (error) {
-        gaiaLog.innerHTML = '<li>' + error.message + '</li>';
-      } finally {
-        setBusy(false);
-      }
-    }
-
-    async function savePluginRepositories() {
-      setBusy(true);
-      try {
-        const repositoryUrls = repoEditor.value
-          .split(/\r?\n/)
-          .map(value => value.trim())
-          .filter(Boolean);
-
-        const repoSnapshot = await callApi('/api/ops/gaia/plugin-repositories', 'POST', { repositoryUrls });
-        const [state, routeDiagnostics] = await Promise.all([
-          callApi('/api/ops/gaia/state', 'GET'),
-          callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET')
-        ]);
-        renderDashboard(state, routeDiagnostics, repoSnapshot);
-      } catch (error) {
-        gaiaLog.innerHTML = '<li>' + error.message + '</li>';
-      } finally {
-        setBusy(false);
-      }
-    }
-
-    async function resyncPluginRepositories() {
-      setBusy(true);
-      try {
-        const repoSnapshot = await callApi('/api/ops/gaia/plugin-repositories/resync', 'POST');
-        const [state, routeDiagnostics] = await Promise.all([
-          callApi('/api/ops/gaia/state', 'GET'),
-          callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET')
-        ]);
-        renderDashboard(state, routeDiagnostics, repoSnapshot);
+        const routeDiagnostics = await callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET');
+        renderState(state, routeDiagnostics);
       } catch (error) {
         gaiaLog.innerHTML = '<li>' + error.message + '</li>';
       } finally {
@@ -763,11 +645,8 @@
       try {
         const wipeData = wipeDataCheckbox.checked;
         const state = await callApi('/api/ops/gaia/reset-shared-services', 'POST', { wipeData });
-        const [routeDiagnostics, repoSnapshot] = await Promise.all([
-          callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET'),
-          callApi('/api/ops/gaia/plugin-repositories', 'GET')
-        ]);
-        renderDashboard(state, routeDiagnostics, repoSnapshot);
+        const routeDiagnostics = await callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET');
+        renderState(state, routeDiagnostics);
       } catch (error) {
         gaiaLog.innerHTML = '<li>' + error.message + '</li>';
       } finally {
@@ -778,8 +657,6 @@
     refreshButton.addEventListener('click', refreshState);
     ensureButton.addEventListener('click', ensureSharedServices);
     refreshPluginsButton.addEventListener('click', refreshAndRestartAllPlugins);
-    saveReposButton.addEventListener('click', savePluginRepositories);
-    resyncReposButton.addEventListener('click', resyncPluginRepositories);
     resetButton.addEventListener('click', showResetWarning);
     confirmResetButton.addEventListener('click', confirmReset);
     cancelResetButton.addEventListener('click', hideResetWarning);

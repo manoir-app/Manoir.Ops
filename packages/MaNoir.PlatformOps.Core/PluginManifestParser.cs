@@ -304,12 +304,7 @@ public static class PluginManifestParser
 			return;
 
 		RequireValue(adminUi.PathPrefix, "deployment.adminUi.pathPrefix", errors);
-
-		if (!string.IsNullOrWhiteSpace(adminUi.ComposeService) && !string.IsNullOrWhiteSpace(adminUi.Service)
-			&& !string.Equals(adminUi.ComposeService.Trim(), adminUi.Service.Trim(), StringComparison.Ordinal))
-		{
-			errors.Add("deployment.adminUi.composeService and deployment.adminUi.service must match when both are provided.");
-		}
+		RequireValue(adminUi.Service, "deployment.adminUi.service", errors);
 
 		if (!string.IsNullOrWhiteSpace(adminUi.PathPrefix) && !adminUi.PathPrefix.StartsWith("/", StringComparison.Ordinal))
 			errors.Add("deployment.adminUi.pathPrefix must start with '/'.");

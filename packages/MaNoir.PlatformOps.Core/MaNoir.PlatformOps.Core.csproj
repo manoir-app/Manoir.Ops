@@ -8,7 +8,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="MaNoir.Core" Version="*" />
-    <PackageReference Include="MaNoir.Core.Contracts" Version="*" />
     <PackageReference Include="YamlDotNet" Version="17.1.0" />
   </ItemGroup>
 </Project>

@@ -11,6 +11,7 @@ namespace MaNoir.PlatformOps.Provider.Docker;
 
 public static class DockerDeploymentPlanFactory
 {
+	private const string AdminUiPublicBasePathEnvironmentVariableName = "MANOIR_ADMINUI_PUBLIC_BASE_PATH";
 	private static readonly Regex EnvironmentVariableReferenceRegex = new Regex(@"\$\{(?<name>[A-Za-z0-9_]+)\}", RegexOptions.Compiled);
 	private static readonly Regex TraefikResourceNameRegex = new Regex(@"[^a-z0-9-]+", RegexOptions.Compiled);
 
@@ -29,6 +30,7 @@ public static class DockerDeploymentPlanFactory
 		string pathPrefix = descriptor.AdminUiPathPrefix.Trim();
 		string composeServiceName = descriptor.AdminUiServiceName.Trim();
 		string traefikResourceName = CreateTraefikResourceName(descriptor.PluginId, composeServiceName, "admin-ui");
+		string traefikMiddlewareName = CreateTraefikResourceName(descriptor.PluginId, composeServiceName, "admin-ui-strip-prefix");
 		string routerRule = $"PathPrefix(`{pathPrefix}`)";
 
 		return new DockerAdminUiRoutePlan()
@@ -44,7 +46,9 @@ public static class DockerDeploymentPlanFactory
 				["traefik.enable"] = "true",
 				["traefik.docker.network"] = DockerRuntimeSpecFactory.SharedNetworkName,
 				[$"traefik.http.routers.{traefikResourceName}.rule"] = routerRule,
+				[$"traefik.http.routers.{traefikResourceName}.middlewares"] = traefikMiddlewareName,
 				[$"traefik.http.routers.{traefikResourceName}.service"] = traefikResourceName,
+				[$"traefik.http.middlewares.{traefikMiddlewareName}.stripprefix.prefixes"] = pathPrefix,
 				[$"traefik.http.services.{traefikResourceName}.loadbalancer.server.port"] = descriptor.AdminUiServicePort.Value.ToString(CultureInfo.InvariantCulture)
 			}
 		};
@@ -88,9 +92,17 @@ public static class DockerDeploymentPlanFactory
 		PlatformOpsSecretsRuntimeGuard.EnsureConfigured();
 
 		DockerDeploymentPlan plan = Create(descriptor, composeFile);
-		plan.ResolvedSharedEnvironmentVariables = resolveSecretAsync == null
-			? await PluginEnvironmentSecretsResolver.ResolveAsync(descriptor.EnvironmentVariables, cancellationToken)
-			: await PluginEnvironmentSecretsResolver.ResolveAsync(descriptor.EnvironmentVariables, resolveSecretAsync, cancellationToken);
+		if (descriptor.EnvironmentVariables == null || descriptor.EnvironmentVariables.Count == 0)
+		{
+			plan.ResolvedSharedEnvironmentVariables = Array.Empty<PluginResolvedEnvironmentVariable>();
+		}
+		else
+		{
+			plan.ResolvedSharedEnvironmentVariables = resolveSecretAsync == null
+				? await PluginEnvironmentSecretsResolver.ResolveAsync(descriptor.EnvironmentVariables, cancellationToken)
+				: await PluginEnvironmentSecretsResolver.ResolveAsync(descriptor.EnvironmentVariables, resolveSecretAsync, cancellationToken);
+		}
+
 		ApplyResolvedServiceEnvironment(plan);
 		return plan;
 	}
@@ -112,7 +124,7 @@ public static class DockerDeploymentPlanFactory
 			services.Add(new DockerDeploymentServicePlan()
 			{
 				Name = service.Name,
-				Image = service.Image,
+				Image = NormalizeImageForRuntime(service.Image),
 				BuildContext = service.BuildContext,
 				ContainerName = service.ContainerName,
 				RestartPolicy = service.RestartPolicy,
@@ -136,6 +148,21 @@ public static class DockerDeploymentPlanFactory
 			ResolvedSharedEnvironmentVariables = Array.Empty<PluginResolvedEnvironmentVariable>(),
 			Services = services
 		};
+	}
+
+	internal static string NormalizeImageForRuntime(string imageReference)
+	{
+		if (string.IsNullOrWhiteSpace(imageReference) || !DockerPlatformRuntimeEnvironment.IsDevelopmentInstance())
+			return imageReference;
+
+		if (imageReference.Contains('@', StringComparison.Ordinal))
+			return imageReference;
+
+		int lastSlashIndex = imageReference.LastIndexOf('/');
+		int lastColonIndex = imageReference.LastIndexOf(':');
+		if (lastColonIndex <= lastSlashIndex)
+			return imageReference + ":dev";
+		return imageReference.Substring(0, lastColonIndex + 1) + "dev";
 	}
 
 	private static void ApplyResolvedServiceEnvironment(DockerDeploymentPlan plan)
@@ -174,12 +201,48 @@ public static class DockerDeploymentPlanFactory
 				});
 			}
 
+			AppendAdminUiRuntimeEnvironment(plan, service, resolvedEnvironment);
+
 			service.ResolvedEnvironment = resolvedEnvironment;
 		}
 
 		if (errors.Count > 0)
 			throw new DockerComposeEnvironmentResolutionException(errors);
 	}
+
+	private static void AppendAdminUiRuntimeEnvironment(DockerDeploymentPlan plan, DockerDeploymentServicePlan service, List<DockerResolvedEnvironmentEntry> resolvedEnvironment)
+	{
+		if (plan == null || service == null || resolvedEnvironment == null)
+			return;
+
+		string publicBasePath = ExtractAdminUiPathPrefix(service);
+		if (string.IsNullOrWhiteSpace(publicBasePath))
+			return;
+
+		resolvedEnvironment.RemoveAll(entry => string.Equals(entry?.Name, AdminUiPublicBasePathEnvironmentVariableName, StringComparison.Ordinal));
+		resolvedEnvironment.Add(new DockerResolvedEnvironmentEntry()
+		{
+			Name = AdminUiPublicBasePathEnvironmentVariableName,
+			Value = publicBasePath
+		});
+	}
+
+	private static string ExtractAdminUiPathPrefix(DockerDeploymentServicePlan service)
+	{
+		if (service?.Labels == null)
+			return null;
+
+		KeyValuePair<string, string> match = service.Labels.FirstOrDefault(pair =>
+			pair.Key.StartsWith("traefik.http.routers.", StringComparison.Ordinal)
+			&& pair.Key.EndsWith(".rule", StringComparison.Ordinal)
+			&& pair.Value.StartsWith("PathPrefix(`", StringComparison.Ordinal)
+			&& pair.Value.EndsWith("`)", StringComparison.Ordinal));
+		if (string.IsNullOrWhiteSpace(match.Value))
+			return null;
+
+		return match.Value.Substring("PathPrefix(`".Length, match.Value.Length - "PathPrefix(`".Length - 2);
+	}
+
 
 	private static IReadOnlyDictionary<string, string> CreateServiceLabels(PluginDeploymentDescriptor descriptor, DockerComposeService service)
 	{

@@ -24,6 +24,14 @@ public static class DockerAutomaticEnvironmentVariables
 			new DockerResolvedEnvironmentEntry() { Name = "REDIS_SERVICE_PORT", Value = "6379" }
 		];
 
+		if (IsPluginObservabilityEnabled())
+		{
+			entries.Add(new DockerResolvedEnvironmentEntry() { Name = "MANOIR_OBSERVABILITY_ENABLED", Value = "true" });
+			entries.Add(new DockerResolvedEnvironmentEntry() { Name = "MANOIR_OTEL_TRACES_ENDPOINT", Value = ResolveEnvironmentValue("MANOIR_OTEL_TRACES_ENDPOINT", "http://tempo:4318/v1/traces") });
+			entries.Add(new DockerResolvedEnvironmentEntry() { Name = "MANOIR_OTEL_LOGS_ENDPOINT", Value = ResolveEnvironmentValue("MANOIR_OTEL_LOGS_ENDPOINT", "http://loki:3100/otlp/v1/logs") });
+			entries.Add(new DockerResolvedEnvironmentEntry() { Name = "MANOIR_PROMETHEUS_METRICS_PATH", Value = ResolveEnvironmentValue("MANOIR_PROMETHEUS_METRICS_PATH", "/metrics") });
+		}
+
 		string authJwtSigningKey = Environment.GetEnvironmentVariable(PlatformOpsSecretsRuntimeGuard.AuthJwtSigningKeyEnvironmentVariableName);
 		if (!string.IsNullOrWhiteSpace(authJwtSigningKey))
 		{
@@ -41,5 +49,25 @@ public static class DockerAutomaticEnvironmentVariables
 	{
 		return CreateResolvedEntries(pluginId)
 			.ToDictionary(entry => entry.Name, entry => entry.Value, StringComparer.Ordinal);
+	}
+
+	private static bool IsPluginObservabilityEnabled()
+	{
+		string rawValue = Environment.GetEnvironmentVariable("MANOIR_PLUGIN_OBSERVABILITY_ENABLED");
+		if (string.IsNullOrWhiteSpace(rawValue))
+			rawValue = Environment.GetEnvironmentVariable("MANOIR_OBSERVABILITY_ENABLED");
+
+		if (string.IsNullOrWhiteSpace(rawValue))
+			return true;
+
+		return string.Equals(rawValue.Trim(), "true", StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(rawValue.Trim(), "1", StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(rawValue.Trim(), "yes", StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static string ResolveEnvironmentValue(string environmentVariableName, string defaultValue)
+	{
+		string rawValue = Environment.GetEnvironmentVariable(environmentVariableName);
+		return string.IsNullOrWhiteSpace(rawValue) ? defaultValue : rawValue.Trim();
 	}
 }

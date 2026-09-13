@@ -58,17 +58,7 @@ public sealed class GaiaPersistedRuntimeState
 
 	public DateTimeOffset? LastEnsureUtc { get; set; }
 
-	public DateTimeOffset? LastPluginRepositorySyncUtc { get; set; }
-
 	public AdminUiDeploymentProjection[] AdminUiDeployments { get; set; } = Array.Empty<AdminUiDeploymentProjection>();
 
 	public AdminUiDeploymentDiff[] AdminUiDeploymentDiffs { get; set; } = Array.Empty<AdminUiDeploymentDiff>();
-
-	public string[] ConfiguredPluginRepositoryUrls { get; set; } = Array.Empty<string>();
-
-	public GaiaManagedPluginRepositoryState[] ManagedPluginRepositories { get; set; } = Array.Empty<GaiaManagedPluginRepositoryState>();
-
-	public string[] LastPluginRepositorySyncMessages { get; set; } = Array.Empty<string>();
-
-	public string[] LastPluginRepositorySyncErrors { get; set; } = Array.Empty<string>();
 }

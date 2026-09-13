@@ -98,7 +98,7 @@ deployment:
   group: home-automation
   adminUi:
     pathPrefix: /home-automation
-    composeService: admin-ui
+    service: admin-ui
     port: 8080
   artifacts:
     - kind: compose
@@ -115,7 +115,7 @@ deployment:
     Assert.AreEqual("/admin", manifest.Catalog.Contributions[0].AdminUi.Pages[0].RelativePath);
     Assert.AreEqual("home-automation", manifest.Deployment.Group);
     Assert.AreEqual("/home-automation", manifest.Deployment.AdminUi.PathPrefix);
-    Assert.AreEqual("admin-ui", manifest.Deployment.AdminUi.ComposeService);
+    Assert.AreEqual("admin-ui", manifest.Deployment.AdminUi.Service);
     Assert.AreEqual(8080, manifest.Deployment.AdminUi.Port);
 		Assert.AreEqual("compose", manifest.Deployment.Artifacts[0].Kind);
 	}
@@ -156,35 +156,13 @@ plugin:
 deployment:
   adminUi:
     pathPrefix: home-automation
+    service: ' '
     port: 70000
 "));
 
 		CollectionAssert.Contains((System.Collections.ICollection)exception.Errors, "deployment.adminUi.pathPrefix must start with '/'.");
+		CollectionAssert.Contains((System.Collections.ICollection)exception.Errors, "deployment.adminUi.service is required.");
 		CollectionAssert.Contains((System.Collections.ICollection)exception.Errors, "deployment.adminUi.port must be between 1 and 65535.");
-	}
-
-	[TestMethod]
-	public void Parse_ShouldRejectMismatchedComposeServiceAndLegacyService()
-	{
-		PluginManifestValidationException exception = Assert.ThrowsException<PluginManifestValidationException>(() => PluginManifestParser.Parse(@"
-apiVersion: manoir/v1
-kind: PluginManifest
-plugin:
-  pluginId: sarah
-  repoUrl: https://github.com/manoir-app/manoir-plugin-sarah
-  displayName: Sarah Home Agent
-  publisher: MaNoir
-  version: 2.3.1
-  minimumMaNoirVersion: 1.8.0
-deployment:
-  adminUi:
-    pathPrefix: /home-automation
-    composeService: admin-ui
-    service: web
-    port: 8080
-"));
-
-		CollectionAssert.Contains((System.Collections.ICollection)exception.Errors, "deployment.adminUi.composeService and deployment.adminUi.service must match when both are provided.");
 	}
 
 	[TestMethod]

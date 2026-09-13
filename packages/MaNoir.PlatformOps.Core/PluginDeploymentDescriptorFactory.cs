@@ -59,9 +59,7 @@ public static class PluginDeploymentDescriptorFactory
 			MinimumMaNoirVersion = manifest.Plugin.MinimumMaNoirVersion,
 			DeploymentGroup = manifest.Deployment?.Group,
 			AdminUiPathPrefix = manifest.Deployment?.AdminUi?.PathPrefix,
-			AdminUiServiceName = string.IsNullOrWhiteSpace(manifest.Deployment?.AdminUi?.ComposeService)
-				? manifest.Deployment?.AdminUi?.Service
-				: manifest.Deployment?.AdminUi?.ComposeService,
+			AdminUiServiceName = manifest.Deployment?.AdminUi?.Service,
 			AdminUiServicePort = manifest.Deployment?.AdminUi?.Port,
 			ComposeArtifactPath = composeArtifact?.Path,
 			EnvironmentTemplatePath = environmentArtifact?.Path,

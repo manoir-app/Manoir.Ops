@@ -31,6 +31,8 @@ public sealed class DockerDeploymentServicePlan
 {
 	public string Name { get; set; }
 
+	public bool IsRequiredForMinimumVital { get; set; } = true;
+
 	public string Image { get; set; }
 
 	public string BuildContext { get; set; }
@@ -40,6 +42,8 @@ public sealed class DockerDeploymentServicePlan
 	public string RestartPolicy { get; set; }
 
 	public DockerImagePullPolicy ImagePullPolicy { get; set; }
+
+	public IReadOnlyList<string> Command { get; set; } = Array.Empty<string>();
 
 	public IReadOnlyList<string> Ports { get; set; } = Array.Empty<string>();
 

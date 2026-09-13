@@ -102,4 +102,51 @@ public sealed class GaiaPluginRepositoryManagerTests
 				Directory.Delete(pluginRepositoriesRootPath, true);
 		}
 	}
+
+	[TestMethod]
+	public async Task SyncAsync_ShouldMarkExistingRepositoryAsSafeBeforePull()
+	{
+		string pluginRepositoriesRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+		string managedRepositoriesRootPath = GaiaPluginRepositoryManager.ResolveManagedRepositoriesRootPath(pluginRepositoriesRootPath);
+		string localDirectoryName = "manoir-plugincatalog";
+		string repositoryRootPath = Path.Combine(managedRepositoriesRootPath, localDirectoryName);
+		List<string> commands = new List<string>();
+
+		try
+		{
+			Directory.CreateDirectory(Path.Combine(repositoryRootPath, ".git"));
+
+			GaiaPluginRepositoryManager manager = new GaiaPluginRepositoryManager((workingDirectory, arguments, cancellationToken) =>
+			{
+				commands.Add((workingDirectory ?? string.Empty) + " => " + string.Join(" ", arguments));
+				return Task.FromResult(new GaiaCommandExecutionResult()
+				{
+					ExitCode = 0,
+					StandardOutput = "ok",
+					StandardError = string.Empty
+				});
+			});
+
+			GaiaPluginRepositorySyncResult result = await manager.SyncAsync(
+				pluginRepositoriesRootPath,
+				["https://github.com/manoir-app/Manoir.PluginCatalog"],
+				[
+					new GaiaManagedPluginRepositoryState()
+					{
+						RepositoryUrl = "https://github.com/manoir-app/Manoir.PluginCatalog",
+						LocalDirectoryName = localDirectoryName
+					}
+				],
+				CancellationToken.None);
+
+			Assert.AreEqual(1, commands.Count);
+			StringAssert.Contains(commands[0], repositoryRootPath + " => -c safe.directory=" + repositoryRootPath + " pull --ff-only");
+			Assert.AreEqual(0, result.Errors.Count);
+		}
+		finally
+		{
+			if (Directory.Exists(pluginRepositoriesRootPath))
+				Directory.Delete(pluginRepositoriesRootPath, true);
+		}
+	}
 }
