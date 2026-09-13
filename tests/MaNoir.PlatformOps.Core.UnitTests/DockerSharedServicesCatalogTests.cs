@@ -91,6 +91,7 @@ public sealed class DockerSharedServicesCatalogTests
 			Assert.IsTrue(Directory.Exists(Path.Combine(sharedServicesRootPath, "tempo", "data")));
 			Assert.IsTrue(Directory.Exists(Path.Combine(sharedServicesRootPath, "prometheus", "data")));
 			Assert.IsTrue(Directory.Exists(Path.Combine(sharedServicesRootPath, "grafana", "data")));
+			Assert.IsTrue(Directory.Exists(Path.Combine(sharedServicesRootPath, "mongo", "data")));
 		}
 		finally
 		{

@@ -400,6 +400,7 @@ public static class DockerSharedServicesCatalog
 		EnsureWritableDataDirectory(Path.Combine(sharedServicesRootPath, "tempo", "data"));
 		EnsureWritableDataDirectory(Path.Combine(sharedServicesRootPath, "prometheus", "data"));
 		EnsureWritableDataDirectory(Path.Combine(sharedServicesRootPath, "grafana", "data"));
+		EnsureWritableDataDirectory(Path.Combine(sharedServicesRootPath, "mongo", "data"));
 	}
 
 	private static void EnsureConfigurationFile(string sharedServicesRootPath, string relativeDirectoryPath, string fileName, string content)
