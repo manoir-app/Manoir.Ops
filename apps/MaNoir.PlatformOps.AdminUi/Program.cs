@@ -12,6 +12,11 @@ builder.Configuration.GetSection("Gaia").Bind(gaiaOptions);
 
 builder.Services.AddSingleton(gaiaOptions);
 builder.Services.AddSingleton<GaiaOperationsService>();
+builder.Services.AddSingleton<GaiaAgentRuntime>();
+builder.Services.AddSingleton<GaiaAgentLifecycleService>();
+builder.Services.AddSingleton<GaiaMessageRouter>();
+builder.Services.AddHostedService<GaiaAgentLifecycleService>(serviceProvider => serviceProvider.GetRequiredService<GaiaAgentLifecycleService>());
+builder.Services.AddHostedService<GaiaMessagePumpService>();
 builder.Services.AddHostedService<GaiaHostedService>();
 
 WebApplication app = builder.Build();
