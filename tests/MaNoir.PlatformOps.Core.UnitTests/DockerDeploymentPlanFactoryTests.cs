@@ -12,7 +12,7 @@ namespace MaNoir.PlatformOps.Core.UnitTests;
 public sealed class DockerDeploymentPlanFactoryTests
 {
 	[TestMethod]
-	public void Create_ShouldProjectPlanFromRepositoryDescriptor()
+	public void Create_ShouldProjectPlanFromAvailablePluginDescriptor()
 	{
 		string repositoryRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
 		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");
@@ -25,23 +25,20 @@ public sealed class DockerDeploymentPlanFactoryTests
 			Directory.CreateDirectory(repositoryRootPath);
 			Directory.CreateDirectory(Path.Combine(repositoryRootPath, "deploy"));
 
-			File.WriteAllText(Path.Combine(repositoryRootPath, PluginRepositoryDeploymentLoader.DefaultManifestFileName),
-				"apiVersion: manoir/v1\n"
-				+ "kind: PluginManifest\n"
-				+ "plugin:\n"
-				+ "  pluginId: sarah\n"
-				+ "  repoUrl: https://github.com/manoir-app/manoir-plugin-sarah\n"
-				+ "  displayName: Sarah Home Agent\n"
-				+ "  publisher: MaNoir\n"
-				+ "  version: 2.3.1\n"
-				+ "  minimumMaNoirVersion: 1.8.0\n"
-				+ "deployment:\n"
-				+ "  group: home-automation\n"
-				+ "  artifacts:\n"
-				+ "    - kind: compose\n"
-				+ "      path: deploy/docker-compose.yml\n"
-				+ "    - kind: env-template\n"
-				+ "      path: deploy/.env.template\n");
+			PluginDeploymentDescriptor descriptor = new PluginDeploymentDescriptor()
+			{
+				PluginId = "sarah",
+				RepoUrl = "https://github.com/manoir-app/manoir-plugin-sarah",
+				DisplayName = "Sarah Home Agent",
+				Version = "2.3.1",
+				DeploymentGroup = "home-automation",
+				ComposeArtifactFullPath = Path.Combine(repositoryRootPath, "deploy", "docker-compose.yml"),
+				EnvironmentVariables =
+				[
+					new PluginEnvironmentVariable() { Name = "PLUGIN_ID", ValueKind = PluginEnvironmentValueKind.Literal, LiteralValue = "sarah" },
+					new PluginEnvironmentVariable() { Name = "API_KEY", ValueKind = PluginEnvironmentValueKind.SecretReference, SecretName = "SARAH_API_KEY" }
+				]
+			};
 			File.WriteAllText(Path.Combine(repositoryRootPath, "deploy", "docker-compose.yml"), @"
 services:
   api:
@@ -58,7 +55,6 @@ services:
 ");
 			File.WriteAllText(Path.Combine(repositoryRootPath, "deploy", ".env.template"), "SARAH_PLUGIN_ID=sarah\nSARAH_API_KEY=${{ secrets.SARAH_API_KEY }}\n");
 
-			PluginDeploymentDescriptor descriptor = PluginRepositoryDeploymentLoader.Load(repositoryRootPath);
 			DockerDeploymentPlan plan = DockerDeploymentPlanFactory.Create(descriptor);
 
 			Assert.AreEqual("sarah", plan.PluginId);

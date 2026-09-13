@@ -38,23 +38,24 @@ public sealed class LocalPluginCatalogInspectorTests
 
 		try
 		{
-			Directory.CreateDirectory(pluginRootPath);
-			File.WriteAllText(Path.Combine(pluginRootPath, PluginRepositoryDeploymentLoader.DefaultManifestFileName), @"
-apiVersion: manoir/v1
-kind: PluginManifest
-plugin:
-  pluginId: platform
-  repoUrl: https://github.com/manoir-app/manoir-platform
-  displayName: Platform
-  publisher: MaNoir
-  version: 1.0.0
-  minimumMaNoirVersion: 1.0.0
-deployment:
-  group: platform
-  artifacts:
-    - kind: compose
-      path: deploy/docker-compose.yml
-");
+			Directory.CreateDirectory(Path.Combine(pluginRootPath, "deploy"));
+			File.WriteAllText(Path.Combine(pluginRootPath, "plugin.yaml"),
+				"apiVersion: manoir/v1\n"
+				+ "kind: AvailablePlugin\n"
+				+ "repoUrl: https://github.com/manoir-app/MaNoir.Platform\n"
+				+ "displayName: Platform\n"
+				+ "version: 1.0.0\n"
+				+ "minimumMaNoirVersion: 1.0.0\n"
+				+ "deployment:\n"
+				+ "  group: platform\n"
+				+ "  adminUi:\n"
+				+ "    pathPrefix: /platform\n"
+				+ "    composeService: core\n"
+				+ "    port: 8080\n"
+				+ "  artifacts:\n"
+				+ "    - kind: compose\n"
+				+ "      path: deploy/docker-compose.yml\n");
+			File.WriteAllText(Path.Combine(pluginRootPath, "deploy", "docker-compose.yml"), "services:\n  core:\n    image: manoir/platform:1.0.0\n");
 
 			RequiredPluginAvailabilityEvaluation evaluation = LocalPluginCatalogInspector.EvaluateRequiredPlugins(pluginCatalogRootPath, ["platform"]);
 
