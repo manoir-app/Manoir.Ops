@@ -103,7 +103,7 @@ public static class DockerSharedServicesCatalog
 
 	public static IReadOnlyList<string> GetDataVolumeNames()
 	{
-		return ["manoir-shared-mongo", "manoir-shared-redis"];
+		return ["manoir-shared-redis"];
 	}
 
 	public static string ResolveSharedServicesRootPath(string sharedServicesRootPath)
@@ -141,6 +141,7 @@ public static class DockerSharedServicesCatalog
 	private static IReadOnlyList<DockerDeploymentServicePlan> GetRequiredServiceDefinitions(string sharedServicesRootPath, bool isDevelopmentInstance)
 	{
 		string mongoImage = ResolveMongoImage();
+		string mongoDataPath = Path.Combine(sharedServicesRootPath, "mongo", "data");
 		string mqttRootPath = Path.Combine(sharedServicesRootPath, "mqtt");
 		string mqttConfigPath = Path.Combine(mqttRootPath, "config");
 		string mqttDataPath = Path.Combine(mqttRootPath, "data");
@@ -165,7 +166,7 @@ public static class DockerSharedServicesCatalog
 				RestartPolicy = "unless-stopped",
 				ImagePullPolicy = DockerImagePullPolicy.Always,
 				Ports = isDevelopmentInstance ? ["27017:27017"] : Array.Empty<string>(),
-				Volumes = ["manoir-shared-mongo:/data/db"],
+				Volumes = [mongoDataPath + ":/data/db"],
 				Environment = Array.Empty<DockerComposeEnvironmentEntry>(),
 				ResolvedEnvironment = Array.Empty<DockerResolvedEnvironmentEntry>()
 			},

@@ -16,8 +16,7 @@ public sealed class DockerSharedServicesCatalogTests
 	{
 		IReadOnlyList<string> volumeNames = DockerSharedServicesCatalog.GetDataVolumeNames();
 
-		Assert.AreEqual(2, volumeNames.Count);
-		CollectionAssert.Contains(volumeNames.ToArray(), "manoir-shared-mongo");
+		Assert.AreEqual(1, volumeNames.Count);
 		CollectionAssert.Contains(volumeNames.ToArray(), "manoir-shared-redis");
 	}
 
@@ -46,6 +45,7 @@ public sealed class DockerSharedServicesCatalogTests
 		{
 			DockerDeploymentPlan plan = DockerSharedServicesCatalog.CreateDeploymentPlan(sharedServicesRootPath);
 			DockerDeploymentServicePlan loki = plan.Services.Single(service => service.Name == "loki");
+			DockerDeploymentServicePlan mongo = plan.Services.Single(service => service.Name == "mongo");
 			DockerDeploymentServicePlan tempo = plan.Services.Single(service => service.Name == "tempo");
 			DockerDeploymentServicePlan prometheus = plan.Services.Single(service => service.Name == "prometheus");
 			DockerDeploymentServicePlan grafana = plan.Services.Single(service => service.Name == "grafana");
@@ -56,6 +56,7 @@ public sealed class DockerSharedServicesCatalogTests
 			CollectionAssert.AreEqual(new[] { "mongo", "nats", "mqtt", "redis", "traefik", "loki", "tempo", "prometheus", "grafana" }, plan.Services.Select(service => service.Name).ToArray());
 			CollectionAssert.AreEqual(new[] { "mongo", "nats", "mqtt", "redis", "traefik" }, plan.Services.Where(service => service.IsRequiredForMinimumVital).Select(service => service.Name).ToArray());
 			Assert.AreEqual(DockerSharedServicesCatalog.DefaultMongoImage, plan.Services[0].Image);
+			CollectionAssert.Contains(mongo.Volumes.ToArray(), Path.Combine(sharedServicesRootPath, "mongo", "data") + ":/data/db");
 			Assert.AreEqual("nats:2.14.0", plan.Services[1].Image);
 			Assert.AreEqual("eclipse-mosquitto:2", plan.Services[2].Image);
 			Assert.AreEqual(DockerSharedServicesCatalog.DefaultTraefikImage, plan.Services[4].Image);
