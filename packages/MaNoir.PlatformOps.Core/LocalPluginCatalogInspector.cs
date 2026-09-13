@@ -34,18 +34,10 @@ public static class LocalPluginCatalogInspector
 
 		if (!string.IsNullOrWhiteSpace(pluginCatalogRootPath) && Directory.Exists(pluginCatalogRootPath))
 		{
-			foreach (string manifestPath in Directory.EnumerateFiles(pluginCatalogRootPath, PluginRepositoryDeploymentLoader.DefaultManifestFileName, SearchOption.AllDirectories))
+			foreach (PluginDeploymentDescriptor descriptor in PlatformCoreCatalogPluginLoader.LoadAvailablePlugins(pluginCatalogRootPath))
 			{
-				try
-				{
-					PluginManifest manifest = PluginManifestParser.ParseFile(manifestPath);
-					if (!string.IsNullOrWhiteSpace(manifest?.Plugin?.PluginId))
-						availablePluginIds.Add(manifest.Plugin.PluginId.Trim());
-				}
-				catch (Exception exception)
-				{
-					errors.Add("The plugin manifest '" + manifestPath + "' could not be read: " + exception.Message);
-				}
+				if (!string.IsNullOrWhiteSpace(descriptor?.PluginId))
+					availablePluginIds.Add(descriptor.PluginId.Trim());
 			}
 
 			if (normalizedRequiredPluginIds.Contains(PlatformCoreCatalogPluginLoader.PlatformPluginId, StringComparer.OrdinalIgnoreCase))

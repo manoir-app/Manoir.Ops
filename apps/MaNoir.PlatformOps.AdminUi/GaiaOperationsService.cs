@@ -67,15 +67,14 @@ public sealed class GaiaOperationsService
 
 		string localProxyBaseUrl = ResolveLocalProxyBaseUrl(_lastStatus);
 		string pluginRepositoriesRootPath = ResolvePluginRepositoriesRootPath();
-		string[] pluginRepositoryRoots = EnumeratePluginRepositoryRoots(pluginRepositoriesRootPath).ToArray();
+		IReadOnlyList<PluginDeploymentDescriptor> catalogPlugins = PlatformCoreCatalogPluginLoader.LoadAvailablePlugins(pluginRepositoriesRootPath);
 		List<GaiaAdminUiRouteDiagnostic> diagnostics = new List<GaiaAdminUiRouteDiagnostic>();
 
-		foreach (string repositoryRootPath in pluginRepositoryRoots)
+		foreach (PluginDeploymentDescriptor descriptor in catalogPlugins)
 		{
 			try
 			{
-				PluginDeploymentDescriptor descriptor = PluginRepositoryDeploymentLoader.Load(repositoryRootPath);
-				GaiaAdminUiRouteDiagnostic diagnostic = CreateAdminUiRouteDiagnostic(descriptor, localProxyBaseUrl, repositoryRootPath);
+				GaiaAdminUiRouteDiagnostic diagnostic = CreateAdminUiRouteDiagnostic(descriptor, localProxyBaseUrl, descriptor.RepositoryRootPath);
 				if (diagnostic != null)
 					diagnostics.Add(diagnostic);
 			}
@@ -83,7 +82,7 @@ public sealed class GaiaOperationsService
 			{
 				diagnostics.Add(new GaiaAdminUiRouteDiagnostic()
 				{
-					RepositoryRootPath = repositoryRootPath,
+					RepositoryRootPath = descriptor.RepositoryRootPath,
 					Error = exception.Message
 				});
 			}
@@ -280,33 +279,31 @@ public sealed class GaiaOperationsService
 			List<AdminUiDeploymentProjection> currentAdminUiDeployments = new List<AdminUiDeploymentProjection>();
 
 			string pluginRepositoriesRootPath = ResolvePluginRepositoriesRootPath();
-			string[] pluginRepositoryRoots = EnumeratePluginRepositoryRoots(pluginRepositoriesRootPath).ToArray();
+			IReadOnlyList<PluginDeploymentDescriptor> catalogPlugins = PlatformCoreCatalogPluginLoader.LoadAvailablePlugins(pluginRepositoriesRootPath);
 
-			if (pluginRepositoryRoots.Length == 0)
-			{
-				operationMessages.Add("No plugin repository was found under '" + pluginRepositoriesRootPath + "'.");
-			}
-			else
+			if (catalogPlugins.Count > 0)
 			{
 				using DockerDeploymentExecutor deploymentExecutor = new DockerDeploymentExecutor();
 
-				foreach (string repositoryRootPath in pluginRepositoryRoots)
+				foreach (PluginDeploymentDescriptor descriptor in catalogPlugins)
 				{
 					try
 					{
-						PluginDeploymentDescriptor descriptor = PluginRepositoryDeploymentLoader.Load(repositoryRootPath);
-						PluginManifest manifest = PluginManifestParser.ParseFile(descriptor.ManifestPath);
 						DockerDeploymentPlan plan = await DockerDeploymentPlanFactory.CreateAsync(descriptor, cancellationToken);
 						await deploymentExecutor.ApplyAsync(plan, cancellationToken);
-						currentAdminUiDeployments.Add(AdminUiDeploymentProjectionFactory.Create(manifest, descriptor));
+						currentAdminUiDeployments.Add(AdminUiDeploymentProjectionFactory.Create(descriptor));
 						deployedPlugins.Add(descriptor.PluginId);
 						operationMessages.Add("Plugin '" + descriptor.PluginId + "' refreshed and restarted.");
 					}
 					catch (Exception exception)
 					{
-						operationErrors.Add("Plugin repository '" + repositoryRootPath + "' could not be refreshed: " + exception.Message);
+						operationErrors.Add("Plugin '" + descriptor.PluginId + "' could not be refreshed: " + exception.Message);
 					}
 				}
+			}
+			else
+			{
+				operationMessages.Add("No plugin repository was found under '" + pluginRepositoriesRootPath + "'.");
 			}
 
 			DockerFirstRunStatus refreshedStatus = await bootstrapper.InspectAsync(cancellationToken);
@@ -563,20 +560,6 @@ public sealed class GaiaOperationsService
 			return Path.Combine(_options.SharedServicesRootPath, "gaia", "runtime-state.json");
 
 		return Path.Combine(AppContext.BaseDirectory, "data", "gaia-runtime-state.json");
-	}
-
-	private static IEnumerable<string> EnumeratePluginRepositoryRoots(string pluginRepositoriesRootPath)
-	{
-		if (string.IsNullOrWhiteSpace(pluginRepositoriesRootPath) || !Directory.Exists(pluginRepositoriesRootPath))
-			return Array.Empty<string>();
-
-		return Directory
-			.EnumerateFiles(pluginRepositoriesRootPath, PluginRepositoryDeploymentLoader.DefaultManifestFileName, SearchOption.AllDirectories)
-			.Select(Path.GetDirectoryName)
-			.Where(path => !string.IsNullOrWhiteSpace(path))
-			.Distinct(StringComparer.OrdinalIgnoreCase)
-			.OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-			.ToArray();
 	}
 
 	private static GaiaAdminUiRouteDiagnostic CreateAdminUiRouteDiagnostic(PluginDeploymentDescriptor descriptor, string localProxyBaseUrl, string repositoryRootPath)

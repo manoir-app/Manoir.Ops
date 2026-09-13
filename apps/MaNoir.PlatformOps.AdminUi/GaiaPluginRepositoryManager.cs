@@ -64,7 +64,7 @@ public sealed class GaiaPluginRepositoryManager
 		if (string.IsNullOrWhiteSpace(pluginRepositoriesRootPath) || !Directory.Exists(pluginRepositoriesRootPath))
 			return true;
 
-		return !Directory.EnumerateFiles(pluginRepositoriesRootPath, PluginRepositoryDeploymentLoader.DefaultManifestFileName, SearchOption.AllDirectories).Any();
+		return !Directory.EnumerateFiles(pluginRepositoriesRootPath, "plugin.yaml", SearchOption.AllDirectories).Any();
 	}
 
 	public async Task<GaiaPluginRepositorySyncResult> SyncAsync(

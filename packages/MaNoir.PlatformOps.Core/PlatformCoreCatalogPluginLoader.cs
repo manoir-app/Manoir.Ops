@@ -78,6 +78,21 @@ public static class PlatformCoreCatalogPluginLoader
 		return false;
 	}
 
+	public static IReadOnlyList<PluginDeploymentDescriptor> LoadAvailablePlugins(string pluginCatalogRootPath)
+	{
+		if (string.IsNullOrWhiteSpace(pluginCatalogRootPath) || !Directory.Exists(pluginCatalogRootPath))
+			return Array.Empty<PluginDeploymentDescriptor>();
+
+		List<PluginDeploymentDescriptor> descriptors = new List<PluginDeploymentDescriptor>();
+		foreach (string candidatePath in Directory.EnumerateFiles(pluginCatalogRootPath, PluginDefinitionFileName, SearchOption.AllDirectories))
+		{
+			if (TryParseAvailablePluginDescriptor(candidatePath, null, out PluginDeploymentDescriptor descriptor) && descriptor != null)
+				descriptors.Add(descriptor);
+		}
+
+		return descriptors;
+	}
+
 	private static IEnumerable<string> EnumerateCandidatePluginDefinitionPaths(string pluginRepositoriesRootPath)
 	{
 		yield return Path.Combine(pluginRepositoriesRootPath, "plugins", "Core", "MainServices", "Platform", PluginDefinitionFileName);
@@ -112,7 +127,8 @@ public static class PlatformCoreCatalogPluginLoader
 		}
 
 		string repoUrl = GetScalarValue(root, "repoUrl");
-		if (!string.Equals(repoUrl?.Trim().TrimEnd('/'), expectedRepositoryUrl, StringComparison.OrdinalIgnoreCase))
+		if (expectedRepositoryUrl != null
+			&& !string.Equals(repoUrl?.Trim().TrimEnd('/'), expectedRepositoryUrl, StringComparison.OrdinalIgnoreCase))
 		{
 			descriptor = null;
 			return false;
