@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Home.Common.Messages;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace MaNoir.PlatformOps.AdminUi;
 
@@ -30,6 +31,9 @@ public sealed class GaiaMessageRouter
 		string normalizedTopic = topic.Trim().ToLowerInvariant();
 		switch (normalizedTopic)
 		{
+			case GaiaPluginInstallationMessage.TopicName:
+				return AcceptPluginInstallation(messageBody);
+
 			case "gaia.stop":
 				_logger.LogWarning("Gaia received a stop request over NATS.");
 				_hostApplicationLifetime.StopApplication();
@@ -67,5 +71,43 @@ public sealed class GaiaMessageRouter
 				_logger.LogError(exception, "Gaia could not execute the operation {OperationName} triggered by topic {Topic}.", operationName, topic);
 			}
 		});
+	}
+
+	private MessageResponse AcceptPluginInstallation(string messageBody)
+	{
+		GaiaPluginInstallationMessage message = JsonConvert.DeserializeObject<GaiaPluginInstallationMessage>(messageBody);
+		if (message == null || string.IsNullOrWhiteSpace(message.RepositoryUrl))
+			return new GaiaPluginInstallationResponse()
+			{
+				Response = "fail",
+				Status = "rejected",
+				Message = "A repository URL is required."
+			};
+
+		string operationId = string.IsNullOrWhiteSpace(message.OperationId)
+			? Guid.NewGuid().ToString("N")
+			: message.OperationId.Trim();
+		string repositoryUrl = message.RepositoryUrl.Trim();
+		_runtime.ReportPluginInstallationAccepted(operationId, repositoryUrl);
+		_ = Task.Run(async () =>
+		{
+			try
+			{
+				await _gaia.InstallPluginAsync(repositoryUrl, CancellationToken.None);
+			}
+			catch (Exception exception)
+			{
+				_logger.LogError(exception, "Gaia could not install plugin repository {RepositoryUrl} for operation {OperationId}.", repositoryUrl, operationId);
+			}
+		});
+
+		return new GaiaPluginInstallationResponse()
+		{
+			Response = "accepted",
+			OperationId = operationId,
+			RepositoryUrl = repositoryUrl,
+			Status = "accepted",
+			Message = "Plugin installation was accepted by Gaia."
+		};
 	}
 }

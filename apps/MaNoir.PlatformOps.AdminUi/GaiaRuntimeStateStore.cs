@@ -61,4 +61,6 @@ public sealed class GaiaPersistedRuntimeState
 	public AdminUiDeploymentProjection[] AdminUiDeployments { get; set; } = Array.Empty<AdminUiDeploymentProjection>();
 
 	public AdminUiDeploymentDiff[] AdminUiDeploymentDiffs { get; set; } = Array.Empty<AdminUiDeploymentDiff>();
+
+	public GaiaManagedPluginRepositoryState[] ManagedPluginRepositories { get; set; } = Array.Empty<GaiaManagedPluginRepositoryState>();
 }

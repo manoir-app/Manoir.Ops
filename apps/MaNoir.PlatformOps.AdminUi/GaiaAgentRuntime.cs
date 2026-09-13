@@ -11,7 +11,7 @@ public sealed class GaiaAgentRuntime
 	private static readonly string[] FixedMessageTopics =
 	[
 		"gaia.>",
-		"system.extensions.>",
+		GaiaPluginInstallationMessage.TopicName,
 		"security.>",
 		"monitoring.>"
 	];
@@ -113,6 +113,11 @@ public sealed class GaiaAgentRuntime
 	public void ReportMessageTriggeredOperation(string topic, string operation)
 	{
 		LogInfo($"Received topic '{topic}' and scheduled Gaia operation '{operation}'.");
+	}
+
+	public void ReportPluginInstallationAccepted(string operationId, string repositoryUrl)
+	{
+		LogInfo($"Accepted plugin installation {operationId} for repository {repositoryUrl}.");
 	}
 
 	public AgentRegistrationRequest CreateRegistrationRequest(AgentState state, string statusMessage = null)
