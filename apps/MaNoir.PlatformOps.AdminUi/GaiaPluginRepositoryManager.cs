@@ -75,8 +75,8 @@ public sealed class GaiaPluginRepositoryManager
 	{
 		string resolvedPluginRepositoriesRootPath = Path.GetFullPath(pluginRepositoriesRootPath ?? throw new ArgumentNullException(nameof(pluginRepositoriesRootPath)));
 		string managedRepositoriesRootPath = ResolveManagedRepositoriesRootPath(resolvedPluginRepositoriesRootPath);
-		Directory.CreateDirectory(resolvedPluginRepositoriesRootPath);
-		Directory.CreateDirectory(managedRepositoriesRootPath);
+		EnsureWritableDirectory(resolvedPluginRepositoriesRootPath);
+		EnsureWritableDirectory(managedRepositoriesRootPath);
 
 		IReadOnlyList<string> normalizedRepositoryUrls = NormalizeRepositoryUrls(repositoryUrls);
 		Dictionary<string, GaiaManagedPluginRepositoryState> existingRepositoriesByUrl = (currentManagedRepositories ?? Array.Empty<GaiaManagedPluginRepositoryState>())
@@ -173,6 +173,30 @@ public sealed class GaiaPluginRepositoryManager
 			Errors = errors,
 			SynchronizedAtUtc = DateTimeOffset.UtcNow
 		};
+	}
+
+	private static void EnsureWritableDirectory(string directoryPath)
+	{
+		try
+		{
+			Directory.CreateDirectory(directoryPath);
+			string probePath = Path.Combine(directoryPath, ".manoir-write-probe-" + Guid.NewGuid().ToString("N"));
+			using (FileStream probe = File.Create(probePath))
+			{
+			}
+
+			File.Delete(probePath);
+		}
+		catch (UnauthorizedAccessException exception)
+		{
+			Console.WriteLine("[Plugin repository sync] Plugin path is not writable: '" + directoryPath + "'. " + exception.Message);
+			throw;
+		}
+		catch (IOException exception)
+		{
+			Console.WriteLine("[Plugin repository sync] Plugin path is not writable or unavailable: '" + directoryPath + "'. " + exception.Message);
+			throw;
+		}
 	}
 
 	public static IReadOnlyList<string> NormalizeRepositoryUrls(IEnumerable<string> values)

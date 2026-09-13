@@ -13,6 +13,52 @@ namespace MaNoir.PlatformOps.Core.UnitTests;
 public sealed class DockerCoreServiceCatalogTests
 {
 	[TestMethod]
+	public void TryLoadAvailablePlugin_ShouldResolveNestedCatalogEntryByRepositoryUrl()
+	{
+		string catalogRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+		string pluginRootPath = Path.Combine(catalogRootPath, "plugins", "HomeAutomation", "Core", "home-automation");
+		string repositoryUrl = "https://github.com/manoir-app/Manoir.HomeAutomation.Core";
+
+		try
+		{
+			Directory.CreateDirectory(Path.Combine(pluginRootPath, "deploy"));
+			File.WriteAllText(Path.Combine(pluginRootPath, "plugin.yaml"),
+				"apiVersion: manoir/v1\n"
+				+ "kind: AvailablePlugin\n"
+				+ "repoUrl: " + repositoryUrl + "\n"
+				+ "displayName: Home Automation\n"
+				+ "version: 0.1.0\n"
+				+ "minimumMaNoirVersion: 0.0.0\n"
+				+ "deployment:\n"
+				+ "  group: home-automation\n"
+				+ "  adminUi:\n"
+				+ "    pathPrefix: /home-automation\n"
+				+ "    composeService: admin-ui\n"
+				+ "    port: 8080\n"
+				+ "  artifacts:\n"
+				+ "    - kind: compose\n"
+				+ "      path: deploy/docker-compose.yml\n");
+			File.WriteAllText(Path.Combine(pluginRootPath, "deploy", "docker-compose.yml"), "services:\n  admin-ui:\n    image: test\n");
+
+			bool loaded = MaNoir.PlatformOps.Core.PlatformCoreCatalogPluginLoader.TryLoadAvailablePlugin(
+				catalogRootPath,
+				repositoryUrl,
+				out MaNoir.PlatformOps.Core.PluginDeploymentDescriptor descriptor,
+				out string error);
+
+			Assert.IsTrue(loaded, error);
+			Assert.AreEqual(repositoryUrl, descriptor.RepoUrl);
+			Assert.AreEqual(Path.GetFullPath(pluginRootPath), descriptor.RepositoryRootPath);
+			Assert.AreEqual(Path.Combine(Path.GetFullPath(pluginRootPath), "deploy", "docker-compose.yml"), descriptor.ComposeArtifactFullPath);
+		}
+		finally
+		{
+			if (Directory.Exists(catalogRootPath))
+				Directory.Delete(catalogRootPath, true);
+		}
+	}
+
+	[TestMethod]
 	public void CreateDeploymentPlan_ShouldUseLatestTagAndHostPort81ByDefault()
 	{
 		string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));

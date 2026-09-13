@@ -363,21 +363,20 @@ public sealed class GaiaOperationsService
 
 			string pluginRepositoriesRootPath = ResolvePluginRepositoriesRootPath();
 			GaiaPluginRepositoryManager repositoryManager = new GaiaPluginRepositoryManager();
+			GaiaPluginRepositoryConfiguration configuration = repositoryManager.ResolveConfiguration(Array.Empty<string>());
 			GaiaPluginRepositorySyncResult syncResult = await repositoryManager.SyncAsync(
 				pluginRepositoriesRootPath,
-				[repositoryUrl.Trim()],
+				configuration.RepositoryUrls,
 				_managedPluginRepositories,
 				cancellationToken);
 			if (syncResult.Errors.Count > 0)
 				throw new InvalidOperationException(string.Join(" | ", syncResult.Errors));
 
-			GaiaManagedPluginRepositoryState syncedRepository = syncResult.ManagedRepositories[0];
 			_managedPluginRepositories = syncResult.ManagedRepositories;
 			TryPersistRuntimeState();
-			string repositoryRootPath = Path.Combine(GaiaPluginRepositoryManager.ResolveManagedRepositoriesRootPath(pluginRepositoriesRootPath), syncedRepository.LocalDirectoryName);
-			PluginDeploymentDescriptor descriptor = PluginRepositoryDeploymentLoader.Load(repositoryRootPath);
-			if (!string.Equals(ContributionRepositoryUrl(descriptor), repositoryUrl.Trim().TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
-				throw new InvalidOperationException("The plugin manifest repository URL does not match the requested repository URL.");
+			PluginDeploymentDescriptor descriptor = ResolvePluginDescriptor(
+				pluginRepositoriesRootPath,
+				repositoryUrl);
 
 			DockerDeploymentPlan plan = await DockerDeploymentPlanFactory.CreateAsync(descriptor, cancellationToken);
 			using DockerDeploymentExecutor deploymentExecutor = new DockerDeploymentExecutor();
@@ -458,6 +457,14 @@ public sealed class GaiaOperationsService
 	private static string ContributionRepositoryUrl(PluginDeploymentDescriptor descriptor)
 	{
 		return descriptor?.RepoUrl?.Trim().TrimEnd('/');
+	}
+
+	private static PluginDeploymentDescriptor ResolvePluginDescriptor(string pluginRepositoriesRootPath, string repositoryUrl)
+	{
+		if (PlatformCoreCatalogPluginLoader.TryLoadAvailablePlugin(pluginRepositoriesRootPath, repositoryUrl, out PluginDeploymentDescriptor descriptor, out string error))
+			return descriptor;
+
+		throw new InvalidOperationException(error);
 	}
 
 	private void ApplyStatus(DockerFirstRunStatus status, bool isEnsureOperation)

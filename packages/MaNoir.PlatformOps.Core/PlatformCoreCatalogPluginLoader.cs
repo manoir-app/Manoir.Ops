@@ -49,6 +49,35 @@ public static class PlatformCoreCatalogPluginLoader
 		return false;
 	}
 
+	public static bool TryLoadAvailablePlugin(string pluginCatalogRootPath, string repositoryUrl, out PluginDeploymentDescriptor descriptor, out string error)
+	{
+		descriptor = null;
+		error = null;
+		if (string.IsNullOrWhiteSpace(pluginCatalogRootPath) || !Directory.Exists(pluginCatalogRootPath))
+		{
+			error = "The plugin catalog root does not exist: '" + (pluginCatalogRootPath ?? string.Empty) + "'.";
+			return false;
+		}
+
+		string normalizedRepositoryUrl = repositoryUrl?.Trim().TrimEnd('/');
+		foreach (string candidatePath in Directory.EnumerateFiles(pluginCatalogRootPath, PluginDefinitionFileName, SearchOption.AllDirectories))
+		{
+			try
+			{
+				if (TryParseAvailablePluginDescriptor(candidatePath, normalizedRepositoryUrl, out descriptor))
+					return true;
+			}
+			catch (Exception exception)
+			{
+				error = "Plugin catalog entry '" + candidatePath + "' could not be read: " + exception.Message;
+				return false;
+			}
+		}
+
+		error = "The plugin repository URL was not found in the plugin catalog: '" + (repositoryUrl ?? string.Empty) + "'.";
+		return false;
+	}
+
 	private static IEnumerable<string> EnumerateCandidatePluginDefinitionPaths(string pluginRepositoriesRootPath)
 	{
 		yield return Path.Combine(pluginRepositoriesRootPath, "plugins", "Core", "MainServices", "Platform", PluginDefinitionFileName);
@@ -62,6 +91,11 @@ public static class PlatformCoreCatalogPluginLoader
 	}
 
 	private static bool TryParsePlatformDescriptor(string pluginDefinitionPath, out PluginDeploymentDescriptor descriptor)
+	{
+		return TryParseAvailablePluginDescriptor(pluginDefinitionPath, PlatformRepositoryUrl, out descriptor);
+	}
+
+	private static bool TryParseAvailablePluginDescriptor(string pluginDefinitionPath, string expectedRepositoryUrl, out PluginDeploymentDescriptor descriptor)
 	{
 		YamlStream yamlStream = new YamlStream();
 		using StreamReader reader = File.OpenText(pluginDefinitionPath);
@@ -78,7 +112,7 @@ public static class PlatformCoreCatalogPluginLoader
 		}
 
 		string repoUrl = GetScalarValue(root, "repoUrl");
-		if (!string.Equals(repoUrl, PlatformRepositoryUrl, StringComparison.OrdinalIgnoreCase))
+		if (!string.Equals(repoUrl?.Trim().TrimEnd('/'), expectedRepositoryUrl, StringComparison.OrdinalIgnoreCase))
 		{
 			descriptor = null;
 			return false;
@@ -93,9 +127,11 @@ public static class PlatformCoreCatalogPluginLoader
 		if (!File.Exists(composeArtifactFullPath))
 			throw new FileNotFoundException("The declared Platform Core compose artifact was not found.", composeArtifactFullPath);
 
-		descriptor = new PluginDeploymentDescriptor()
+			descriptor = new PluginDeploymentDescriptor()
 		{
-			PluginId = PlatformPluginId,
+			PluginId = string.Equals(repoUrl, PlatformRepositoryUrl, StringComparison.OrdinalIgnoreCase)
+				? PlatformPluginId
+				: GetRepositoryName(repoUrl),
 			RepositoryRootPath = pluginRootPath,
 			ManifestPath = pluginDefinitionPath,
 			RepoUrl = repoUrl,
@@ -112,6 +148,13 @@ public static class PlatformCoreCatalogPluginLoader
 		};
 
 		return true;
+	}
+
+	private static string GetRepositoryName(string repositoryUrl)
+	{
+		string value = (repositoryUrl ?? string.Empty).TrimEnd('/');
+		int separatorIndex = value.LastIndexOf('/');
+		return separatorIndex >= 0 && separatorIndex < value.Length - 1 ? value.Substring(separatorIndex + 1) : value;
 	}
 
 	private static string GetRequiredComposeArtifactPath(YamlMappingNode deployment)
