@@ -348,7 +348,7 @@ public sealed class GaiaOperationsService
 		}
 	}
 
-	public async Task InstallPluginAsync(string repositoryUrl, CancellationToken cancellationToken = default)
+	public async Task InstallPluginAsync(string repositoryUrl, CancellationToken cancellationToken = default, Action<string, string, string> reportProgress = null)
 	{
 		if (string.IsNullOrWhiteSpace(repositoryUrl))
 			throw new ArgumentException("A plugin repository URL is required.", nameof(repositoryUrl));
@@ -356,12 +356,14 @@ public sealed class GaiaOperationsService
 		await _gate.WaitAsync(cancellationToken);
 		try
 		{
+			reportProgress?.Invoke("running", "bootstrap", "Preparing shared services.");
 			using DockerFirstRunBootstrapper bootstrapper = new DockerFirstRunBootstrapper(_options.SharedServicesRootPath);
 			DockerFirstRunStatus status = await bootstrapper.EnsureMinimumVitalAsync(cancellationToken);
 			if (status.OperationErrors.Count > 0)
 				throw new InvalidOperationException(string.Join(" | ", status.OperationErrors));
 
 			string pluginRepositoriesRootPath = ResolvePluginRepositoriesRootPath();
+			reportProgress?.Invoke("running", "sync-catalog", "Synchronizing the plugin catalog.");
 			GaiaPluginRepositoryManager repositoryManager = new GaiaPluginRepositoryManager();
 			GaiaPluginRepositoryConfiguration configuration = repositoryManager.ResolveConfiguration(Array.Empty<string>());
 			GaiaPluginRepositorySyncResult syncResult = await repositoryManager.SyncAsync(
@@ -378,9 +380,12 @@ public sealed class GaiaOperationsService
 				pluginRepositoriesRootPath,
 				repositoryUrl);
 
+			reportProgress?.Invoke("running", "resolve-manifest", "Resolving the plugin manifest.");
 			DockerDeploymentPlan plan = await DockerDeploymentPlanFactory.CreateAsync(descriptor, cancellationToken);
+			reportProgress?.Invoke("running", "deploy", "Deploying plugin containers.");
 			using DockerDeploymentExecutor deploymentExecutor = new DockerDeploymentExecutor();
 			await deploymentExecutor.ApplyAsync(plan, cancellationToken);
+			reportProgress?.Invoke("running", "runtime-state", "Publishing plugin runtime state.");
 			PublishPluginRuntimeState(descriptor.PluginId);
 			_logger.LogInformation("Plugin {PluginId} installed from repository {RepositoryUrl}.", descriptor.PluginId, repositoryUrl);
 		}

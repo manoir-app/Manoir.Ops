@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using Home.Common.Messages;
@@ -14,6 +15,7 @@ public sealed class GaiaMessageRouter
 	private readonly IHostApplicationLifetime _hostApplicationLifetime;
 	private readonly ILogger<GaiaMessageRouter> _logger;
 	private readonly GaiaAgentRuntime _runtime;
+	private readonly ConcurrentDictionary<string, GaiaPluginInstallationStatusResponse> _pluginInstallations = new();
 
 	public GaiaMessageRouter(GaiaOperationsService gaia, GaiaAgentRuntime runtime, IHostApplicationLifetime hostApplicationLifetime, ILogger<GaiaMessageRouter> logger)
 	{
@@ -33,6 +35,9 @@ public sealed class GaiaMessageRouter
 		{
 			case GaiaPluginInstallationMessage.TopicName:
 				return AcceptPluginInstallation(messageBody);
+
+			case GaiaPluginInstallationMessage.StatusTopicName:
+				return GetPluginInstallationStatus(messageBody);
 
 			case "gaia.stop":
 				_logger.LogWarning("Gaia received a stop request over NATS.");
@@ -88,15 +93,21 @@ public sealed class GaiaMessageRouter
 			? Guid.NewGuid().ToString("N")
 			: message.OperationId.Trim();
 		string repositoryUrl = message.RepositoryUrl.Trim();
+		SetInstallationStatus(operationId, repositoryUrl, "accepted", "accepted", "Plugin installation was accepted by Gaia.");
 		_runtime.ReportPluginInstallationAccepted(operationId, repositoryUrl);
 		_ = Task.Run(async () =>
 		{
 			try
 			{
-				await _gaia.InstallPluginAsync(repositoryUrl, CancellationToken.None);
+				await _gaia.InstallPluginAsync(repositoryUrl, CancellationToken.None, (status, step, progressMessage) =>
+				{
+					SetInstallationStatus(operationId, repositoryUrl, status, step, progressMessage);
+				});
+				SetInstallationStatus(operationId, repositoryUrl, "completed", "completed", "Plugin installation completed.");
 			}
 			catch (Exception exception)
 			{
+				SetInstallationStatus(operationId, repositoryUrl, "failed", "failed", exception.Message);
 				_logger.LogError(exception, "Gaia could not install plugin repository {RepositoryUrl} for operation {OperationId}.", repositoryUrl, operationId);
 			}
 		});
@@ -108,6 +119,36 @@ public sealed class GaiaMessageRouter
 			RepositoryUrl = repositoryUrl,
 			Status = "accepted",
 			Message = "Plugin installation was accepted by Gaia."
+		};
+	}
+
+	private MessageResponse GetPluginInstallationStatus(string messageBody)
+	{
+		GaiaPluginInstallationStatusRequest request = JsonConvert.DeserializeObject<GaiaPluginInstallationStatusRequest>(messageBody);
+		if (request == null || string.IsNullOrWhiteSpace(request.OperationId))
+			return MessageResponse.GenericFail;
+
+		return _pluginInstallations.TryGetValue(request.OperationId.Trim(), out GaiaPluginInstallationStatusResponse status)
+			? status
+			: new GaiaPluginInstallationStatusResponse()
+			{
+				Response = "fail",
+				OperationId = request.OperationId,
+				Status = "not-found",
+				Message = "The installation operation was not found."
+			};
+	}
+
+	private void SetInstallationStatus(string operationId, string repositoryUrl, string status, string step, string message)
+	{
+		_pluginInstallations[operationId] = new GaiaPluginInstallationStatusResponse()
+		{
+			Response = "ok",
+			OperationId = operationId,
+			RepositoryUrl = repositoryUrl,
+			Status = status,
+			Step = step,
+			Message = message
 		};
 	}
 }

@@ -9,12 +9,22 @@ namespace MaNoir.PlatformOps.AdminUi;
 public sealed class GaiaPluginInstallationMessage : BaseMessage
 {
     public const string TopicName = "system.extensions.install";
+    public const string StatusTopicName = "system.extensions.install.status";
 
     public GaiaPluginInstallationMessage() : base(TopicName)
     {
     }
 
     public string RepositoryUrl { get; set; }
+
+    public string OperationId { get; set; }
+}
+
+public sealed class GaiaPluginInstallationStatusRequest : BaseMessage
+{
+    public GaiaPluginInstallationStatusRequest() : base(GaiaPluginInstallationMessage.StatusTopicName)
+    {
+    }
 
     public string OperationId { get; set; }
 }
@@ -26,6 +36,19 @@ public sealed class GaiaPluginInstallationResponse : MessageResponse
     public string RepositoryUrl { get; set; }
 
     public string Status { get; set; }
+
+    public string Message { get; set; }
+}
+
+public sealed class GaiaPluginInstallationStatusResponse : MessageResponse
+{
+    public string OperationId { get; set; }
+
+    public string RepositoryUrl { get; set; }
+
+    public string Status { get; set; }
+
+    public string Step { get; set; }
 
     public string Message { get; set; }
 }
