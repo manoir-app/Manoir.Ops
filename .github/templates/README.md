@@ -23,10 +23,14 @@ Before using one:
 ## Available Templates
 
 - `platform-repo/`: for the transverse platform foundation, the Core, and the CommunicationHub;
-- `domain-repo/`: for a major business domain;
-- `platformops-repo/`: for control-plane and operations components;
-- `agents-repo/`: for a transverse agents repository.
+- `domain-repo/`: for a major business domain with no local agent;
+- `domain-with-agents-repo/`: for a business domain that also hosts one or more local agents tightly coupled to it (for example a home-automation domain with its own scripting/scene agent) — this is likely the most frequent case;
+- `agents-repo/`: for a transverse, cross-domain agents repository.
 - `experiences-repo/`: for shells, dashboards, tablets, and other composed experiences.
+
+There is intentionally no `platformops-repo/` template: PlatformOps is a single, unique technical foundation (Manoir.Ops/Gaia), not a repeatable repository family.
+
+`domain-with-agents-repo/` also ships executable starter files, not just prose, because these were the exact pieces that caused hours of manual debugging on a real new repo: `manoir.plugin.yaml`, `.github/workflows/build.yml` (including the `publish-plugin-catalog` job), `deploy/docker-compose.yml`, an Admin UI `Program.cs` wired to `MaNoir.Core.AdminUi.Hosting`, and a `vite.config.ts` + `runtimeConfig.ts` pair using the relative-build/`<base href>` convention. Replace every `{{PLACEHOLDER}}` (including in folder and file names) before using them.
 
 ## Recommended Usage
 

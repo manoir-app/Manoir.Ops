@@ -305,6 +305,49 @@ services:
 	}
 
 	[TestMethod]
+	public async Task CreateAsync_ShouldKeepAdminUiPathPrefixConsistentBetweenDescriptorLabelsAndEnvironment()
+	{
+		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");
+		using EnvironmentVariableScope saltScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.SecretsSaltEnvironmentVariableName, "AAECAwQFBgcICQoLDA0ODxAREhM=");
+		using EnvironmentVariableScope authJwtSigningKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.AuthJwtSigningKeyEnvironmentVariableName, "12345678901234567890123456789012");
+		using EnvironmentVariableScope developmentInstanceScope = new EnvironmentVariableScope(DockerPlatformRuntimeEnvironment.DevelopmentInstanceEnvironmentVariableName, null);
+
+		PluginDeploymentDescriptor descriptor = new PluginDeploymentDescriptor()
+		{
+			PluginId = "sarah",
+			ComposeArtifactFullPath = "compose.yml",
+			AdminUiPathPrefix = "/sarah",
+			AdminUiServiceName = "api",
+			AdminUiServicePort = 8080,
+			EnvironmentVariables = Array.Empty<PluginEnvironmentVariable>()
+		};
+
+		DockerComposeFile composeFile = DockerComposeParser.Parse(@"
+services:
+  api:
+    image: manoir/sarah-api:2.3.1
+");
+
+		DockerDeploymentPlan plan = await DockerDeploymentPlanFactory.CreateAsync(
+			descriptor,
+			composeFile,
+			(secretName, cancellationToken) => Task.FromResult<string>(null),
+			default);
+
+		DockerAdminUiRoutePlan routePlan = DockerDeploymentPlanFactory.CreateAdminUiRoutePlan(descriptor);
+		string labelPathPrefix = plan.Services[0].Labels[$"traefik.http.routers.{routePlan.TraefikResourceName}.rule"]
+			.Replace("PathPrefix(`", string.Empty)
+			.Replace("`)", string.Empty);
+		string injectedEnvironmentValue = plan.Services[0].ResolvedEnvironment
+			.Single(entry => string.Equals(entry.Name, "MANOIR_ADMINUI_PUBLIC_BASE_PATH", StringComparison.Ordinal))
+			.Value;
+
+		// Guards against the manifest pathPrefix, the generated Traefik label, and the injected env var drifting apart.
+		Assert.AreEqual(descriptor.AdminUiPathPrefix, labelPathPrefix);
+		Assert.AreEqual(descriptor.AdminUiPathPrefix, injectedEnvironmentValue);
+	}
+
+	[TestMethod]
 	public void Create_ShouldRewriteAllPluginImageTagsToDevForDevelopmentInstance()
 	{
 		using EnvironmentVariableScope apiKeyScope = new EnvironmentVariableScope(PlatformOpsSecretsRuntimeGuard.ApiKeyEnvironmentVariableName, "test-primary-key");

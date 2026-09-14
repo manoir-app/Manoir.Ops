@@ -103,7 +103,7 @@ public static class DockerDeploymentPlanFactory
 				: await PluginEnvironmentSecretsResolver.ResolveAsync(descriptor.EnvironmentVariables, resolveSecretAsync, cancellationToken);
 		}
 
-		ApplyResolvedServiceEnvironment(plan);
+		ApplyResolvedServiceEnvironment(plan, descriptor);
 		return plan;
 	}
 
@@ -165,8 +165,9 @@ public static class DockerDeploymentPlanFactory
 		return imageReference.Substring(0, lastColonIndex + 1) + "dev";
 	}
 
-	private static void ApplyResolvedServiceEnvironment(DockerDeploymentPlan plan)
+	private static void ApplyResolvedServiceEnvironment(DockerDeploymentPlan plan, PluginDeploymentDescriptor descriptor)
 	{
+		DockerAdminUiRoutePlan routePlan = descriptor == null ? null : CreateAdminUiRoutePlan(descriptor);
 		Dictionary<string, string> resolvedVariablesByName = new Dictionary<string, string>(StringComparer.Ordinal);
 		foreach (KeyValuePair<string, string> pair in DockerAutomaticEnvironmentVariables.CreateVariablesByName(plan.PluginId))
 			resolvedVariablesByName[pair.Key] = pair.Value;
@@ -201,7 +202,7 @@ public static class DockerDeploymentPlanFactory
 				});
 			}
 
-			AppendAdminUiRuntimeEnvironment(plan, service, resolvedEnvironment);
+			AppendAdminUiRuntimeEnvironment(routePlan, service, resolvedEnvironment);
 
 			service.ResolvedEnvironment = resolvedEnvironment;
 		}
@@ -210,37 +211,20 @@ public static class DockerDeploymentPlanFactory
 			throw new DockerComposeEnvironmentResolutionException(errors);
 	}
 
-	private static void AppendAdminUiRuntimeEnvironment(DockerDeploymentPlan plan, DockerDeploymentServicePlan service, List<DockerResolvedEnvironmentEntry> resolvedEnvironment)
+	private static void AppendAdminUiRuntimeEnvironment(DockerAdminUiRoutePlan routePlan, DockerDeploymentServicePlan service, List<DockerResolvedEnvironmentEntry> resolvedEnvironment)
 	{
-		if (plan == null || service == null || resolvedEnvironment == null)
+		if (routePlan == null || service == null || resolvedEnvironment == null)
 			return;
 
-		string publicBasePath = ExtractAdminUiPathPrefix(service);
-		if (string.IsNullOrWhiteSpace(publicBasePath))
+		if (!string.Equals(service.Name, routePlan.ComposeServiceName, StringComparison.OrdinalIgnoreCase))
 			return;
 
 		resolvedEnvironment.RemoveAll(entry => string.Equals(entry?.Name, AdminUiPublicBasePathEnvironmentVariableName, StringComparison.Ordinal));
 		resolvedEnvironment.Add(new DockerResolvedEnvironmentEntry()
 		{
 			Name = AdminUiPublicBasePathEnvironmentVariableName,
-			Value = publicBasePath
+			Value = routePlan.PublicBasePath
 		});
-	}
-
-	private static string ExtractAdminUiPathPrefix(DockerDeploymentServicePlan service)
-	{
-		if (service?.Labels == null)
-			return null;
-
-		KeyValuePair<string, string> match = service.Labels.FirstOrDefault(pair =>
-			pair.Key.StartsWith("traefik.http.routers.", StringComparison.Ordinal)
-			&& pair.Key.EndsWith(".rule", StringComparison.Ordinal)
-			&& pair.Value.StartsWith("PathPrefix(`", StringComparison.Ordinal)
-			&& pair.Value.EndsWith("`)", StringComparison.Ordinal));
-		if (string.IsNullOrWhiteSpace(match.Value))
-			return null;
-
-		return match.Value.Substring("PathPrefix(`".Length, match.Value.Length - "PathPrefix(`".Length - 2);
 	}
 
 
