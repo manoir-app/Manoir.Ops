@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Docker.DotNet.Models;
+using MaNoir.PlatformOps.Core;
 
 namespace MaNoir.PlatformOps.Provider.Docker;
 
@@ -14,6 +15,9 @@ public sealed class DockerFirstRunStatus
 	public string DockerError { get; set; }
 
 	public IReadOnlyList<string> EnvironmentErrors { get; set; } = Array.Empty<string>();
+
+	/// <summary>Les erreurs d'environnement reformulées en français, pour l'affichage.</summary>
+	public IReadOnlyList<string> EnvironmentIssues => PlatformOpsEnvironmentErrorTranslator.ToFrench(EnvironmentErrors);
 
 	public IReadOnlyList<DockerSharedServiceStatus> SharedServices { get; set; } = Array.Empty<DockerSharedServiceStatus>();
 
@@ -60,6 +64,9 @@ public sealed class DockerFirstRunStatus
 public sealed class DockerSharedServiceStatus
 {
 	public string ServiceName { get; set; }
+
+	/// <summary>Libellé français du service, pour l'affichage.</summary>
+	public string DisplayName => DockerServiceLabels.GetLabel(ServiceName);
 
 	public bool IsRequiredForMinimumVital { get; set; } = true;
 
