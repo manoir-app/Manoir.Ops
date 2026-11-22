@@ -95,11 +95,22 @@
     .banner.bad .detail { color: #4A4247; }
     .banner.ok { background: var(--ok-tint); color: var(--ok); }
     .banner.warn { background: var(--warn-tint); color: var(--warn); }
-    .banner.busy { background: var(--yellow); color: var(--ink); }
+    .banner.busy { background: var(--tonal); color: var(--ink); }
     .banner .detail { color: var(--ink); margin-top: 4px; }
-    .spinner { width: 24px; height: 24px; border-radius: 50%; border: 3px solid rgba(30, 26, 29, .2); border-top-color: var(--ink); animation: spin 1s linear infinite; flex: 0 0 24px; margin-top: 2px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 4s; } }
+    /* Indicateur d'attente du design system : pastille jaune qui se déforme, point prune qui tourne */
+    .spinner { --sp: 48px; position: relative; display: inline-block; width: var(--sp); height: var(--sp); flex: 0 0 var(--sp); }
+    .spinner::before { content: ""; position: absolute; inset: 0; background: var(--yellow); border-radius: 42% 58% 52% 48% / 48% 44% 56% 52%; animation: mn-morph 2.6s ease-in-out infinite, mn-turn 8s linear infinite; }
+    .spinner::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 24%, var(--prune) 0 9%, transparent 10%); animation: mn-turn 1.6s linear infinite; }
+    .spinner.sm { --sp: 20px; }
+    .spinner.sm::after { display: none; }
+    @keyframes mn-turn { to { transform: rotate(360deg); } }
+    @keyframes mn-morph { 0%, 100% { border-radius: 42% 58% 52% 48% / 48% 44% 56% 52%; } 33% { border-radius: 58% 42% 46% 54% / 54% 56% 44% 46%; } 66% { border-radius: 48% 52% 58% 42% / 42% 50% 50% 58%; } }
+    @keyframes mn-slide { from { background-position: 0 0; } to { background-position: 100% 0; } }
+    @media (prefers-reduced-motion: reduce) { .spinner::before, .spinner::after { animation: none; } .banner.busy .body::after { animation: none; background-position: 40% 0; } }
+    /* Attente : carte tonale, titre à côté du spinner, détail discret, barre sans durée connue */
+    .banner.busy { align-items: center; }
+    .banner.busy .detail { color: var(--muted); font-weight: 300; }
+    .banner.busy .body::after { content: ""; display: block; height: 8px; margin-top: 16px; border-radius: 999px; background: linear-gradient(var(--prune), var(--prune)) 0 0 / 38% 100% no-repeat #E4DED5; animation: mn-slide 1.8s ease-in-out infinite alternate; }
     .row3 { display: flex; flex-wrap: wrap; gap: 20px; }
     .row3 > .card { flex: 1 1 220px; min-width: 0; padding: 22px 26px; }
     .stat-label { color: var(--muted); font-size: 15px; }
@@ -274,13 +285,17 @@
       }
     };
 
+    let stateRequestPending = false;
     async function loadState() {
+      if (stateRequestPending) return;
+      stateRequestPending = true;
       try {
         app.state = await callApi('/api/ops/gaia/state', 'GET');
         app.loadError = null;
       } catch (error) {
         app.loadError = error.message;
       }
+      stateRequestPending = false;
       await loadInstalls();
       if (app.tab === 'routage') await loadRoutes();
       render();
@@ -374,7 +389,7 @@
       const view = app.tab === 'routage' ? renderRoutes()
         : app.tab === 'deploiements' ? renderDeployments()
         : renderEssential();
-      main.replaceChildren(...view);
+      main.replaceChildren(...view.filter(Boolean));
     }
 
     function pageHeader(subtitle, right) {
@@ -391,6 +406,14 @@
       if (!status.isDockerAvailable) return { cls: 'bad', text: 'Docker indisponible' };
       if (status.hasMinimumVital) return { cls: 'ok', text: 'Essentiel prêt' };
       return { cls: 'warn', text: 'Il manque des éléments' };
+    }
+
+    // Premier démarrage : l'état n'existe pas encore tant que Gaïa déploie l'essentiel.
+    function isStarting() { return !app.loadError && !app.state?.lastStatus; }
+    function startingBanner() {
+      return h('div', { class: 'banner busy', role: 'status' }, h('span', { class: 'spinner' }),
+        h('div', { class: 'body' }, h('b', {}, 'Gaïa prépare la plateforme'),
+          h('div', { class: 'detail' }, 'Les services essentiels se déploient. Cela peut prendre quelques minutes au premier démarrage ; cette page se met à jour toute seule.')));
     }
 
     function renderEssential() {
@@ -444,6 +467,8 @@
           h('div', { class: 'body' }, h('b', {}, 'Docker ne répond pas'),
             h('div', { class: 'detail' }, 'Gaïa ne peut ni lire ni relancer les services pour l’instant.'))));
       }
+
+      if (isStarting() && !app.busy) out.push(startingBanner());
 
       // installations de modules (suivi en direct)
       const activeInstalls = app.installs.filter(isActiveInstall);
@@ -604,7 +629,7 @@
 
     function renderRoutes() {
       const out = [pageHeader('Comment chaque module est joint depuis la console')];
-      if (!app.routes) { out.push(h('div', { class: 'empty' }, app.loadError || 'Chargement…')); return out; }
+      if (!app.routes) { out.push(app.loadError ? h('div', { class: 'empty' }, app.loadError) : startingBanner()); return out; }
       if (!app.routes.length) {
         out.push(h('div', { class: 'card' }, h('div', { class: 'empty' }, 'Aucune route calculée pour l’instant')));
         return out;
@@ -633,7 +658,7 @@
       const out = [pageHeader('Ce que chaque module apporte à la console, version après version')];
       const diffs = app.state?.adminUiDeploymentDiffs || [];
       const deployments = app.state?.adminUiDeployments || [];
-      if (!app.state) { out.push(h('div', { class: 'empty' }, app.loadError || 'Chargement…')); return out; }
+      if (!app.state) { out.push(app.loadError ? h('div', { class: 'empty' }, app.loadError) : startingBanner()); return out; }
       if (!diffs.length) {
         out.push(h('div', { class: 'card' }, h('div', { class: 'empty' }, 'Aucun déploiement enregistré')));
         return out;
@@ -688,7 +713,9 @@
     setInterval(() => { if (!app.busy && !app.confirm) loadState(); }, 30000);
     // pendant une installation de module, on suit l'avancement de près
     setInterval(async () => {
-      if (app.tab !== 'essentiel' || app.busy) return;
+      if (app.busy) return;
+      if (isStarting()) { await loadState(); return; }
+      if (app.tab !== 'essentiel') return;
       const hadActive = app.installs.some(isActiveInstall);
       await loadInstalls();
       if (hadActive || app.installs.some(isActiveInstall)) {
