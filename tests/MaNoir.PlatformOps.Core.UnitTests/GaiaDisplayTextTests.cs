@@ -9,14 +9,14 @@ namespace MaNoir.PlatformOps.Core.UnitTests;
 public sealed class GaiaDisplayTextTests
 {
 	[TestMethod]
-	public void GetLabel_ShouldReturnFrenchLabelForKnownServices()
+	public void GetLabel_ShouldReturnEnglishLabelForKnownServices()
 	{
-		Assert.AreEqual("Base de données", DockerServiceLabels.GetLabel("mongo"));
-		Assert.AreEqual("Messagerie", DockerServiceLabels.GetLabel("nats"));
-		Assert.AreEqual("Capteurs et appareils", DockerServiceLabels.GetLabel("MQTT"));
+		Assert.AreEqual("Database", DockerServiceLabels.GetLabel("mongo"));
+		Assert.AreEqual("Messaging", DockerServiceLabels.GetLabel("nats"));
+		Assert.AreEqual("Sensors and devices", DockerServiceLabels.GetLabel("MQTT"));
 		Assert.AreEqual("Cache", DockerServiceLabels.GetLabel("redis"));
-		Assert.AreEqual("Routeur Traefik", DockerServiceLabels.GetLabel("traefik"));
-		Assert.AreEqual("Console d’administration", DockerServiceLabels.GetLabel("core"));
+		Assert.AreEqual("Traefik router", DockerServiceLabels.GetLabel("traefik"));
+		Assert.AreEqual("Administration console", DockerServiceLabels.GetLabel("core"));
 	}
 
 	[TestMethod]
@@ -27,33 +27,33 @@ public sealed class GaiaDisplayTextTests
 	}
 
 	[TestMethod]
-	public void ToFrench_ShouldTranslateKnownSecretErrors()
+	public void ToReadable_ShouldTranslateKnownSecretErrors()
 	{
 		Assert.AreEqual(
-			"La variable HOMEAUTOMATION_APIKEY est absente ou vide.",
-			PlatformOpsEnvironmentErrorTranslator.ToFrench("HOMEAUTOMATION_APIKEY is required for PlatformOps secret operations."));
+			"The variable HOMEAUTOMATION_APIKEY is missing or empty.",
+			PlatformOpsEnvironmentErrorTranslator.ToReadable("HOMEAUTOMATION_APIKEY is required for PlatformOps secret operations."));
 		Assert.AreEqual(
-			"La variable HOMEAUTOMATION_SECRETS_SALT doit contenir une valeur Base64 valide.",
-			PlatformOpsEnvironmentErrorTranslator.ToFrench("HOMEAUTOMATION_SECRETS_SALT must contain a valid Base64 payload."));
+			"The variable HOMEAUTOMATION_SECRETS_SALT must contain a valid Base64 value.",
+			PlatformOpsEnvironmentErrorTranslator.ToReadable("HOMEAUTOMATION_SECRETS_SALT must contain a valid Base64 payload."));
 		Assert.AreEqual(
-			"La variable HOMEAUTOMATION_SECRETS_SALT doit faire au moins 16 octets une fois décodée.",
-			PlatformOpsEnvironmentErrorTranslator.ToFrench("HOMEAUTOMATION_SECRETS_SALT must decode to at least 16 bytes."));
+			"The variable HOMEAUTOMATION_SECRETS_SALT must be at least 16 bytes once decoded.",
+			PlatformOpsEnvironmentErrorTranslator.ToReadable("HOMEAUTOMATION_SECRETS_SALT must decode to at least 16 bytes."));
 		Assert.AreEqual(
-			"La variable HOMEAUTOMATION_AUTH_JWT_SIGNING_KEY doit contenir au moins 32 caractères.",
-			PlatformOpsEnvironmentErrorTranslator.ToFrench("HOMEAUTOMATION_AUTH_JWT_SIGNING_KEY must contain at least 32 characters."));
+			"The variable HOMEAUTOMATION_AUTH_JWT_SIGNING_KEY must contain at least 32 characters.",
+			PlatformOpsEnvironmentErrorTranslator.ToReadable("HOMEAUTOMATION_AUTH_JWT_SIGNING_KEY must contain at least 32 characters."));
 	}
 
 	[TestMethod]
-	public void ToFrench_ShouldKeepUnknownMessagesUnchanged()
+	public void ToReadable_ShouldKeepUnknownMessagesUnchanged()
 	{
-		IReadOnlyList<string> result = PlatformOpsEnvironmentErrorTranslator.ToFrench(new[] { "Something else happened." });
+		IReadOnlyList<string> result = PlatformOpsEnvironmentErrorTranslator.ToReadable(new[] { "Something else happened." });
 
 		Assert.AreEqual(1, result.Count);
 		Assert.AreEqual("Something else happened.", result[0]);
 	}
 
 	[TestMethod]
-	public void FirstRunStatus_ShouldExposeFrenchDisplayTexts()
+	public void FirstRunStatus_ShouldExposeReadableDisplayTexts()
 	{
 		DockerFirstRunStatus status = new DockerFirstRunStatus
 		{
@@ -61,7 +61,7 @@ public sealed class GaiaDisplayTextTests
 		};
 		DockerSharedServiceStatus service = new DockerSharedServiceStatus { ServiceName = "nats" };
 
-		Assert.AreEqual("La variable HOMEAUTOMATION_APIKEY est absente ou vide.", status.EnvironmentIssues[0]);
-		Assert.AreEqual("Messagerie", service.DisplayName);
+		Assert.AreEqual("The variable HOMEAUTOMATION_APIKEY is missing or empty.", status.EnvironmentIssues[0]);
+		Assert.AreEqual("Messaging", service.DisplayName);
 	}
 }

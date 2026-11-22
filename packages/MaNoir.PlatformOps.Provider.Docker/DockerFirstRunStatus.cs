@@ -16,8 +16,8 @@ public sealed class DockerFirstRunStatus
 
 	public IReadOnlyList<string> EnvironmentErrors { get; set; } = Array.Empty<string>();
 
-	/// <summary>Les erreurs d'environnement reformulées en français, pour l'affichage.</summary>
-	public IReadOnlyList<string> EnvironmentIssues => PlatformOpsEnvironmentErrorTranslator.ToFrench(EnvironmentErrors);
+	/// <summary>The environment errors rewritten as readable sentences, for display.</summary>
+	public IReadOnlyList<string> EnvironmentIssues => PlatformOpsEnvironmentErrorTranslator.ToReadable(EnvironmentErrors);
 
 	public IReadOnlyList<DockerSharedServiceStatus> SharedServices { get; set; } = Array.Empty<DockerSharedServiceStatus>();
 
@@ -65,7 +65,7 @@ public sealed class DockerSharedServiceStatus
 {
 	public string ServiceName { get; set; }
 
-	/// <summary>Libellé français du service, pour l'affichage.</summary>
+	/// <summary>Readable service label, for display.</summary>
 	public string DisplayName => DockerServiceLabels.GetLabel(ServiceName);
 
 	public bool IsRequiredForMinimumVital { get; set; } = true;

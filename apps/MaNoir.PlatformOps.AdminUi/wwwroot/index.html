@@ -188,6 +188,17 @@
     // ---------- language: English is the source, French is a translation (browser language) ----------
     const LANG = /^fr\b/i.test((navigator.languages && navigator.languages[0]) || navigator.language || 'en') ? 'fr' : 'en';
     const FR = {
+      // service labels returned by Gaïa (English)
+      'Administration console': 'Console d’administration',
+      'Traefik router': 'Routeur Traefik',
+      'Database': 'Base de données',
+      'Messaging': 'Messagerie',
+      'Sensors and devices': 'Capteurs et appareils',
+      'Cache': 'Cache',
+      'Logs': 'Journaux',
+      'Traces': 'Traces',
+      'Metrics': 'Métriques',
+      'Monitoring dashboards': 'Tableaux de supervision',
       'MaNoir — Platform': 'MaNoir — Plateforme',
       'technical administration': 'administration technique',
       'Platform': 'Plateforme',
@@ -312,6 +323,10 @@
     };
     // strings with values: [pattern, replacement]
     const FR_PATTERNS = [
+      [/^The variable (.+) is missing or empty\.$/, 'La variable $1 est absente ou vide.'],
+      [/^The variable (.+) must contain a valid Base64 value\.$/, 'La variable $1 doit contenir une valeur Base64 valide.'],
+      [/^The variable (.+) must be at least 16 bytes once decoded\.$/, 'La variable $1 doit faire au moins 16 octets une fois décodée.'],
+      [/^The variable (.+) must contain at least 32 characters\.$/, 'La variable $1 doit contenir au moins 32 caractères.'],
       [/^Installing module (.+)$/, 'Installation du module $1'],
       [/^(.+) · step (\d+) of (\d+)$/, (m, label, n, total) => `${tr(label)} · étape ${n} sur ${total}`],
       [/^Checked (?:at (.+)|never) · essentials (?:ensured at (.+)|never ensured)$/, (m, a, b) => `Vérifié ${a ? 'à ' + a : 'jamais'} · essentiel ${b ? 'assuré à ' + b : 'jamais assuré'}`],
@@ -325,30 +340,10 @@
       [/^(\d+) unchanged$/, (m, n) => `${n} ${n > 1 ? 'inchangées' : 'inchangée'}`],
       [/^(\d+) errors? remains? to be handled\.$/, (m, n) => `Il reste ${n} ${n > 1 ? 'erreurs' : 'erreur'} à traiter.`]
     ];
-    // Texts that Gaïa itself returns in French (service labels, environment errors): translated for English readers.
-    const SERVER_EN = {
-      'Console d’administration': 'Administration console',
-      'Routeur Traefik': 'Traefik router',
-      'Base de données': 'Database',
-      'Messagerie': 'Messaging',
-      'Capteurs et appareils': 'Sensors and devices',
-      'Cache': 'Cache',
-      'Journaux': 'Logs',
-      'Traces': 'Traces',
-      'Métriques': 'Metrics',
-      'Tableaux de supervision': 'Monitoring dashboards'
-    };
-    const SERVER_EN_PATTERNS = [
-      [/^La variable (.+) est absente ou vide\.$/, 'The variable $1 is missing or empty.'],
-      [/^La variable (.+) doit contenir une valeur Base64 valide\.$/, 'The variable $1 must contain a valid Base64 value.'],
-      [/^La variable (.+) doit faire au moins 16 octets une fois décodée\.$/, 'The variable $1 must be at least 16 bytes once decoded.'],
-      [/^La variable (.+) doit contenir au moins 32 caractères\.$/, 'The variable $1 must contain at least 32 characters.']
-    ];
     function tr(value) {
-      if (typeof value !== 'string') return value;
-      const [table, patterns] = LANG === 'fr' ? [FR, FR_PATTERNS] : [SERVER_EN, SERVER_EN_PATTERNS];
-      if (Object.prototype.hasOwnProperty.call(table, value)) return table[value];
-      for (const [pattern, replacement] of patterns) {
+      if (LANG !== 'fr' || typeof value !== 'string') return value;
+      if (Object.prototype.hasOwnProperty.call(FR, value)) return FR[value];
+      for (const [pattern, replacement] of FR_PATTERNS) {
         if (pattern.test(value)) return value.replace(pattern, replacement);
       }
       return value;
