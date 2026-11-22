@@ -374,7 +374,7 @@
       const view = app.tab === 'routage' ? renderRoutes()
         : app.tab === 'deploiements' ? renderDeployments()
         : renderEssential();
-      main.replaceChildren(...view);
+      main.replaceChildren(...view.filter(Boolean));
     }
 
     function pageHeader(subtitle, right) {
