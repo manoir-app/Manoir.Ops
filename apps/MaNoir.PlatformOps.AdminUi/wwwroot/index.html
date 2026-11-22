@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MaNoir — Plateforme</title>
+  <title>MaNoir — Platform</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -179,12 +179,185 @@
   <div class="layout">
     <aside class="rail">
       <a class="logo" href="#essentiel" aria-label="MaNoir">M</a>
-      <nav aria-label="Plateforme" id="tabs"></nav>
+      <nav aria-label="Platform" id="tabs"></nav>
     </aside>
     <main id="main" aria-live="polite"></main>
   </div>
 
   <script>
+    // ---------- language: English is the source, French is a translation (browser language) ----------
+    const LANG = /^fr\b/i.test((navigator.languages && navigator.languages[0]) || navigator.language || 'en') ? 'fr' : 'en';
+    const FR = {
+      'MaNoir — Platform': 'MaNoir — Plateforme',
+      'technical administration': 'administration technique',
+      'Platform': 'Plateforme',
+      'Essentials': 'Essentiel',
+      'Routing': 'Routage',
+      'Deployments': 'Déploiements',
+      'Gaïa keeps the home’s technical services running': 'Gaïa veille sur les services techniques de la maison',
+      'How each module is reached from the console': 'Comment chaque module est joint depuis la console',
+      'What each module adds to the console, version after version': 'Ce que chaque module apporte à la console, version après version',
+      'Loading…': 'Chargement…',
+      'Docker unavailable': 'Docker indisponible',
+      'Essentials ready': 'Essentiel prêt',
+      'Some elements are missing': 'Il manque des éléments',
+      'Operation in progress': 'Opération en cours',
+      '(default path)': '(chemin par défaut)',
+      'Gaïa is preparing the platform': 'Gaïa prépare la plateforme',
+      'The essential services are being deployed. This can take a few minutes on first start; this page updates by itself.': 'Les services essentiels se déploient. Cela peut prendre quelques minutes au premier démarrage ; cette page se met à jour toute seule.',
+      'Gaïa is not responding': 'Gaïa ne répond pas',
+      'Restart the essentials': 'Remettre l’essentiel en route',
+      'Restarting…': 'Remise en route…',
+      'Check status': 'Vérifier l’état',
+      'Restart and update modules': 'Redémarrer et mettre à jour les modules',
+      'Reset shared services': 'Réinitialiser les services partagés',
+      'Docker is not responding': 'Docker ne répond pas',
+      'Gaïa can neither read nor restart the services for now.': 'Gaïa ne peut ni lire ni relancer les services pour l’instant.',
+      'Last error: ': 'Dernière erreur : ',
+      'Reachable': 'Accessible',
+      'Unavailable': 'Indisponible',
+      'The engine responds': 'Le moteur répond',
+      'The engine is not responding': 'Le moteur ne répond pas',
+      'Docker version': 'Version de Docker',
+      'Engine version': 'Version du moteur',
+      'Message returned by Docker': 'Message renvoyé par Docker',
+      'Environment variables': 'Variables d’environnement',
+      'Ready': 'Prêtes',
+      'Incomplete': 'Incomplètes',
+      'No errors': 'Aucune erreur',
+      'Required variables': 'Variables requises',
+      'No errors detected': 'Aucune erreur détectée',
+      'Module installations': 'Installations de modules',
+      'Completed': 'Terminée',
+      'Failed': 'Échec',
+      'Confirm restart': 'Confirmer le redémarrage',
+      'Restart and update modules?': 'Redémarrer et mettre à jour les modules ?',
+      'Gaïa fetches the latest versions then restarts every module. They may be unavailable for a few moments.': 'Gaïa récupère les dernières versions puis relance tous les modules. Ils peuvent être indisponibles quelques instants.',
+      'Restart': 'Redémarrer',
+      'Cancel': 'Annuler',
+      'Confirm reset': 'Confirmer la réinitialisation',
+      'Reset shared services?': 'Réinitialiser les services partagés ?',
+      'Gaïa will delete the containers ': 'Gaïa va supprimer les conteneurs ',
+      'of the shared services': 'des services partagés',
+      ', then redeploy them. Modules are cut off in the meantime.': ', puis les redéployer. Les modules sont coupés pendant ce temps.',
+      ' and ': ' et ',
+      'Also delete the data': 'Supprimer aussi les données',
+      'Erases the Docker volumes: databases, messages and queues will be empty. This cannot be undone.': 'Efface les volumes Docker : bases, messages et files seront vides. Impossible à annuler.',
+      'Reset': 'Réinitialiser',
+      'Needs update': 'À mettre à jour',
+      'Stopped': 'Arrêté',
+      'Missing': 'Manquant',
+      'Essential services': 'Services essentiels',
+      'Gaïa cannot read the services while Docker is not responding. Restart Docker on the server, then check the status.': 'Gaïa ne peut pas lire les services tant que Docker ne répond pas. Relancez Docker sur le serveur, puis vérifiez l’état.',
+      'What Gaïa keeps running so the home works.': 'Ce que Gaïa maintient en marche pour que la maison fonctionne.',
+      'State before the current operation.': 'État avant l’opération en cours.',
+      'in place: ': 'en place : ',
+      'no image in place': 'aucune image en place',
+      'None': 'Aucun',
+      'Core': 'Cœur',
+      'Shared services': 'Services partagés',
+      'No service to display yet.': 'Aucun service à afficher pour l’instant.',
+      'Service': 'Service',
+      'Expected image': 'Image attendue',
+      'Ports': 'Ports',
+      'Status': 'État',
+      'Required modules': 'Modules requis',
+      'Not in the local installation catalogue': 'Absent du catalogue local d’installation',
+      'Available': 'Disponible',
+      'No required module': 'Aucun module requis',
+      'Last operation': 'Dernière opération',
+      'Containers removed: ': 'Conteneurs supprimés : ',
+      'Volumes removed: ': 'Volumes supprimés : ',
+      'Shared services deployed: ': 'Services partagés déployés : ',
+      'Core deployed: ': 'Cœur déployé : ',
+      'Modules redeployed: ': 'Modules redéployés : ',
+      'No recent errors': 'Aucune erreur récente',
+      'No route computed yet': 'Aucune route calculée pour l’instant',
+      'Error': 'Erreur',
+      'Routable': 'Routable',
+      'Computed': 'Calculé',
+      'Module': 'Module',
+      'Path': 'Chemin',
+      'Container port': 'Port du conteneur',
+      'Traefik rule': 'Règle Traefik',
+      'Traefik resource': 'Ressource Traefik',
+      'Local address': 'Adresse locale',
+      'Local port not available yet': 'Port local pas encore disponible',
+      'No deployment recorded': 'Aucun déploiement enregistré',
+      'Version unchanged': 'Version inchangée',
+      'No change since the previous version.': 'Aucun changement depuis la version précédente.',
+      'Gaïa is restarting the essentials': 'Gaïa remet l’essentiel en route',
+      'Missing services are being deployed. Actions come back when the operation ends.': 'Les services manquants sont en cours de déploiement. Les actions reviennent à la fin de l’opération.',
+      'Essentials restarted': 'Essentiel remis en route',
+      'Gaïa is checking the status': 'Gaïa vérifie l’état',
+      'Reading the Docker services.': 'Lecture des services Docker en cours.',
+      'Status checked': 'État vérifié',
+      'Gaïa is restarting and updating the modules': 'Gaïa redémarre et met à jour les modules',
+      'Modules are restarted one by one. They may be unavailable for a few moments.': 'Les modules sont relancés un par un. Ils peuvent être indisponibles quelques instants.',
+      'Modules restarted': 'Modules redémarrés',
+      'Gaïa is resetting the shared services': 'Gaïa réinitialise les services partagés',
+      'Services are deleted then redeployed. Modules are cut off in the meantime.': 'Les services sont supprimés puis redéployés. Les modules sont coupés pendant ce temps.',
+      'Shared services reset': 'Services partagés réinitialisés',
+      'The operation failed': 'L’opération a échoué',
+      'The request failed.': 'La requête a échoué.',
+      'Nothing to deploy.': 'Rien à déployer.',
+      'Request received': 'Demande reçue',
+      'Preparing shared services': 'Préparation des services partagés',
+      'Syncing the catalogue': 'Synchronisation du catalogue',
+      'Reading the module manifest': 'Lecture du manifeste du module',
+      'Deploying containers': 'Déploiement des conteneurs',
+      'Publishing the module state': 'Publication de l’état du module',
+      'Installation complete': 'Installation terminée',
+      'Installation failed': 'Échec de l’installation',
+    };
+    // strings with values: [pattern, replacement]
+    const FR_PATTERNS = [
+      [/^Installing module (.+)$/, 'Installation du module $1'],
+      [/^(.+) · step (\d+) of (\d+)$/, (m, label, n, total) => `${tr(label)} · étape ${n} sur ${total}`],
+      [/^Checked (?:at (.+)|never) · essentials (?:ensured at (.+)|never ensured)$/, (m, a, b) => `Vérifié ${a ? 'à ' + a : 'jamais'} · essentiel ${b ? 'assuré à ' + b : 'jamais assuré'}`],
+      [/^(.+) · (\d+) services?$/, (m, g, n) => `${tr(g)} · ${n} ${n > 1 ? 'services' : 'service'}`],
+      [/^(\d+) services? deployed$/, (m, n) => `${n} ${n > 1 ? 'services déployés' : 'service déployé'}`],
+      [/^(\d+) modules? redeployed$/, (m, n) => `${n} ${n > 1 ? 'modules redéployés' : 'module redéployé'}`],
+      [/^(\d+) to fix$/, '$1 à corriger'],
+      [/^(\d+) added$/, (m, n) => `${n} ${n > 1 ? 'ajoutées' : 'ajoutée'}`],
+      [/^(\d+) modified$/, (m, n) => `${n} ${n > 1 ? 'modifiées' : 'modifiée'}`],
+      [/^(\d+) removed$/, (m, n) => `${n} ${n > 1 ? 'retirées' : 'retirée'}`],
+      [/^(\d+) unchanged$/, (m, n) => `${n} ${n > 1 ? 'inchangées' : 'inchangée'}`],
+      [/^(\d+) errors? remains? to be handled\.$/, (m, n) => `Il reste ${n} ${n > 1 ? 'erreurs' : 'erreur'} à traiter.`]
+    ];
+    // Texts that Gaïa itself returns in French (service labels, environment errors): translated for English readers.
+    const SERVER_EN = {
+      'Console d’administration': 'Administration console',
+      'Routeur Traefik': 'Traefik router',
+      'Base de données': 'Database',
+      'Messagerie': 'Messaging',
+      'Capteurs et appareils': 'Sensors and devices',
+      'Cache': 'Cache',
+      'Journaux': 'Logs',
+      'Traces': 'Traces',
+      'Métriques': 'Metrics',
+      'Tableaux de supervision': 'Monitoring dashboards'
+    };
+    const SERVER_EN_PATTERNS = [
+      [/^La variable (.+) est absente ou vide\.$/, 'The variable $1 is missing or empty.'],
+      [/^La variable (.+) doit contenir une valeur Base64 valide\.$/, 'The variable $1 must contain a valid Base64 value.'],
+      [/^La variable (.+) doit faire au moins 16 octets une fois décodée\.$/, 'The variable $1 must be at least 16 bytes once decoded.'],
+      [/^La variable (.+) doit contenir au moins 32 caractères\.$/, 'The variable $1 must contain at least 32 characters.']
+    ];
+    function tr(value) {
+      if (typeof value !== 'string') return value;
+      const [table, patterns] = LANG === 'fr' ? [FR, FR_PATTERNS] : [SERVER_EN, SERVER_EN_PATTERNS];
+      if (Object.prototype.hasOwnProperty.call(table, value)) return table[value];
+      for (const [pattern, replacement] of patterns) {
+        if (pattern.test(value)) return value.replace(pattern, replacement);
+      }
+      return value;
+    }
+    document.documentElement.lang = LANG;
+    if (LANG === 'fr') document.title = 'MaNoir — Plateforme';
+    document.getElementById('tabs').setAttribute('aria-label', tr('Platform'));
+    const LOCALE = LANG === 'fr' ? 'fr-FR' : 'en-GB';
+
     // ---------- petits utilitaires ----------
     function h(tag, attrs, ...children) {
       const el = document.createElement(tag);
@@ -193,11 +366,11 @@
         if (k === 'class') el.className = v;
         else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
         else if (k === 'html') el.innerHTML = v;
-        else el.setAttribute(k, v === true ? '' : v);
+        else el.setAttribute(k, v === true ? '' : (k === 'aria-label' || k === 'title' ? tr(v) : v));
       }
       for (const c of children.flat()) {
         if (c === null || c === undefined || c === false) continue;
-        el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+        el.append(c instanceof Node ? c : document.createTextNode(tr(String(c))));
       }
       return el;
     }
@@ -219,8 +392,8 @@
       const d = new Date(value);
       const sameDay = d.toDateString() === new Date().toDateString();
       return sameDay
-        ? d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-        : d.toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        ? d.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })
+        : d.toLocaleString(LOCALE, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     }
 
     async function callApi(url, method, body) {
@@ -232,7 +405,7 @@
       const response = await fetch(url, options);
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(text || 'La requête a échoué.');
+        throw new Error(text || tr('The request failed.'));
       }
       return response.json();
     }
@@ -241,9 +414,9 @@
 
     // ---------- état de la page ----------
     const TABS = [
-      { id: 'essentiel', label: 'Essentiel' },
-      { id: 'routage', label: 'Routage' },
-      { id: 'deploiements', label: 'Déploiements' }
+      { id: 'essentiel', label: 'Essentials' },
+      { id: 'routage', label: 'Routing' },
+      { id: 'deploiements', label: 'Deployments' }
     ];
 
     const app = {
@@ -261,27 +434,27 @@
     const OPERATIONS = {
       ensure: {
         url: '/api/ops/gaia/ensure-minimum-vital',
-        busyTitle: 'Gaïa remet l’essentiel en route',
-        busyDetail: 'Les services manquants sont en cours de déploiement. Les actions reviennent à la fin de l’opération.',
-        doneTitle: 'Essentiel remis en route'
+        busyTitle: 'Gaïa is restarting the essentials',
+        busyDetail: 'Missing services are being deployed. Actions come back when the operation ends.',
+        doneTitle: 'Essentials restarted'
       },
       inspect: {
         url: '/api/ops/gaia/inspect',
-        busyTitle: 'Gaïa vérifie l’état',
-        busyDetail: 'Lecture des services Docker en cours.',
-        doneTitle: 'État vérifié'
+        busyTitle: 'Gaïa is checking the status',
+        busyDetail: 'Reading the Docker services.',
+        doneTitle: 'Status checked'
       },
       restart: {
         url: '/api/ops/gaia/refresh-and-restart-all-plugins',
-        busyTitle: 'Gaïa redémarre et met à jour les modules',
-        busyDetail: 'Les modules sont relancés un par un. Ils peuvent être indisponibles quelques instants.',
-        doneTitle: 'Modules redémarrés'
+        busyTitle: 'Gaïa is restarting and updating the modules',
+        busyDetail: 'Modules are restarted one by one. They may be unavailable for a few moments.',
+        doneTitle: 'Modules restarted'
       },
       reset: {
         url: '/api/ops/gaia/reset-shared-services',
-        busyTitle: 'Gaïa réinitialise les services partagés',
-        busyDetail: 'Les services sont supprimés puis redéployés. Les modules sont coupés pendant ce temps.',
-        doneTitle: 'Services partagés réinitialisés'
+        busyTitle: 'Gaïa is resetting the shared services',
+        busyDetail: 'Services are deleted then redeployed. Modules are cut off in the meantime.',
+        doneTitle: 'Shared services reset'
       }
     };
 
@@ -303,14 +476,14 @@
 
     const INSTALL_STEPS = ['accepted', 'bootstrap', 'sync-catalog', 'resolve-manifest', 'deploy', 'runtime-state'];
     const INSTALL_STEP_LABELS = {
-      'accepted': 'Demande reçue',
-      'bootstrap': 'Préparation des services partagés',
-      'sync-catalog': 'Synchronisation du catalogue',
-      'resolve-manifest': 'Lecture du manifeste du module',
-      'deploy': 'Déploiement des conteneurs',
-      'runtime-state': 'Publication de l’état du module',
-      'completed': 'Installation terminée',
-      'failed': 'Échec de l’installation'
+      'accepted': 'Request received',
+      'bootstrap': 'Preparing shared services',
+      'sync-catalog': 'Syncing the catalogue',
+      'resolve-manifest': 'Reading the module manifest',
+      'deploy': 'Deploying containers',
+      'runtime-state': 'Publishing the module state',
+      'completed': 'Installation complete',
+      'failed': 'Installation failed'
     };
     const isActiveInstall = i => i.status === 'accepted' || i.status === 'running';
 
@@ -348,7 +521,7 @@
         app.result = summarize(op, app.state);
         app.loadError = null;
       } catch (error) {
-        app.result = { kind: 'bad', title: 'L’opération a échoué', detail: error.message };
+        app.result = { kind: 'bad', title: 'The operation failed', detail: error.message };
       }
       app.wipeData = false;
       app.busy = null;
@@ -360,13 +533,13 @@
       const status = state?.lastStatus || {};
       const parts = [];
       const services = (status.deployedSharedServices?.length || 0) + (status.deployedCoreServices?.length || 0);
-      if (services) parts.push(plural(services, 'service déployé', 'services déployés'));
+      if (services) parts.push(tr(plural(services, 'service deployed', 'services deployed')));
       const modules = status.deployedPlugins?.length || 0;
-      if (modules) parts.push(plural(modules, 'module redéployé', 'modules redéployés'));
+      if (modules) parts.push(tr(plural(modules, 'module redeployed', 'modules redeployed')));
       const errors = (status.operationErrors?.length || 0) + (state?.lastError ? 1 : 0);
-      if (!parts.length) parts.push('Rien à déployer.');
+      if (!parts.length) parts.push(tr('Nothing to deploy.'));
       let detail = parts.join(', ') + (parts[0].endsWith('.') ? '' : '.');
-      if (errors) detail += ` Il reste ${plural(errors, 'erreur', 'erreurs')} à traiter.`;
+      if (errors) detail += ' ' + tr(`${errors} ${errors > 1 ? 'errors remain' : 'error remains'} to be handled.`);
       return {
         kind: errors ? 'warn' : 'ok',
         title: op.doneTitle,
@@ -395,25 +568,25 @@
     function pageHeader(subtitle, right) {
       return h('header', { class: 'top' },
         h('div', {},
-          h('div', { class: 'brand' }, h('b', {}, 'MaNoir'), h('span', { class: 'muted' }, 'administration technique')),
-          h('h1', {}, 'Plateforme'),
+          h('div', { class: 'brand' }, h('b', {}, 'MaNoir'), h('span', { class: 'muted' }, 'technical administration')),
+          h('h1', {}, 'Platform'),
           h('p', { class: 'lede' }, subtitle)),
         right || null);
     }
 
     function globalState(status) {
-      if (!status) return { cls: 'idle', text: 'Chargement…' };
-      if (!status.isDockerAvailable) return { cls: 'bad', text: 'Docker indisponible' };
-      if (status.hasMinimumVital) return { cls: 'ok', text: 'Essentiel prêt' };
-      return { cls: 'warn', text: 'Il manque des éléments' };
+      if (!status) return { cls: 'idle', text: 'Loading…' };
+      if (!status.isDockerAvailable) return { cls: 'bad', text: 'Docker unavailable' };
+      if (status.hasMinimumVital) return { cls: 'ok', text: 'Essentials ready' };
+      return { cls: 'warn', text: 'Some elements are missing' };
     }
 
     // Premier démarrage : l'état n'existe pas encore tant que Gaïa déploie l'essentiel.
     function isStarting() { return !app.loadError && !app.state?.lastStatus; }
     function startingBanner() {
       return h('div', { class: 'banner busy', role: 'status' }, h('span', { class: 'spinner' }),
-        h('div', { class: 'body' }, h('b', {}, 'Gaïa prépare la plateforme'),
-          h('div', { class: 'detail' }, 'Les services essentiels se déploient. Cela peut prendre quelques minutes au premier démarrage ; cette page se met à jour toute seule.')));
+        h('div', { class: 'body' }, h('b', {}, 'Gaïa is preparing the platform'),
+          h('div', { class: 'detail' }, 'The essential services are being deployed. This can take a few minutes on first start; this page updates by itself.')));
     }
 
     function renderEssential() {
@@ -427,26 +600,26 @@
       const inspected = formatTime(state?.lastInspectionUtc);
       const ensured = formatTime(state?.lastEnsureUtc);
       const stamp = h('div', { class: 'stamp' },
-        h('span', { class: 'state ' + (app.busy ? 'idle' : g.cls) }, h('i'), app.busy ? 'Opération en cours' : g.text),
-        h('small', {}, `Vérifié ${inspected ? 'à ' + inspected : 'jamais'} · essentiel ${ensured ? 'assuré à ' + ensured : 'jamais assuré'}`),
-        h('span', { class: 'mono muted' }, state?.options?.sharedServicesRootPath || '(chemin par défaut)'));
+        h('span', { class: 'state ' + (app.busy ? 'idle' : g.cls) }, h('i'), app.busy ? 'Operation in progress' : g.text),
+        h('small', {}, `Checked ${inspected ? 'at ' + inspected : 'never'} · essentials ${ensured ? 'ensured at ' + ensured : 'never ensured'}`),
+        h('span', { class: 'mono muted' }, state?.options?.sharedServicesRootPath || '(default path)'));
 
-      const out = [pageHeader('Gaïa veille sur les services techniques de la maison', stamp)];
+      const out = [pageHeader('Gaïa keeps the home’s technical services running', stamp)];
 
       if (app.loadError && !state) {
         out.push(h('div', { class: 'banner bad', role: 'alert' }, icon('alert', 28),
-          h('div', { class: 'body' }, h('b', {}, 'Gaïa ne répond pas'), h('div', { class: 'detail' }, app.loadError))));
+          h('div', { class: 'body' }, h('b', {}, 'Gaïa is not responding'), h('div', { class: 'detail' }, app.loadError))));
       }
 
       // actions
       const actions = h('div', { class: 'actions' },
         dockerOk
           ? h('button', { class: 'btn primary', disabled: disabled, onclick: () => runOperation('ensure') },
-              app.busy && app.busy.title === OPERATIONS.ensure.busyTitle ? 'Remise en route…' : 'Remettre l’essentiel en route')
+              app.busy && app.busy.title === OPERATIONS.ensure.busyTitle ? 'Restarting…' : 'Restart the essentials')
           : null,
-        h('button', { class: dockerOk ? 'btn' : 'btn primary', disabled: disabled, onclick: () => runOperation('inspect') }, icon('refresh', 20), 'Vérifier l’état'),
-        dockerOk ? h('button', { class: 'btn link', disabled: disabled, onclick: () => { app.confirm = 'restart'; render(); } }, 'Redémarrer et mettre à jour les modules') : null,
-        dockerOk ? h('button', { class: 'btn danger-link', disabled: disabled, onclick: () => { app.confirm = 'reset'; app.wipeData = false; render(); } }, 'Réinitialiser les services partagés') : null);
+        h('button', { class: dockerOk ? 'btn' : 'btn primary', disabled: disabled, onclick: () => runOperation('inspect') }, icon('refresh', 20), 'Check status'),
+        dockerOk ? h('button', { class: 'btn link', disabled: disabled, onclick: () => { app.confirm = 'restart'; render(); } }, 'Restart and update modules') : null,
+        dockerOk ? h('button', { class: 'btn danger-link', disabled: disabled, onclick: () => { app.confirm = 'reset'; app.wipeData = false; render(); } }, 'Reset shared services') : null);
       out.push(actions);
 
       if (app.confirm === 'restart') out.push(restartConfirm());
@@ -461,11 +634,11 @@
           h('div', { class: 'body' },
             h('b', {}, app.result.title),
             h('div', { class: 'detail' }, app.result.detail),
-            app.result.error ? h('div', { class: 'detail' }, h('b', { style: 'font-size:15px;display:inline' }, 'Dernière erreur : '), app.result.error) : null)));
+            app.result.error ? h('div', { class: 'detail' }, h('b', { style: 'font-size:15px;display:inline' }, 'Last error: '), app.result.error) : null)));
       } else if (!dockerOk && status) {
         out.push(h('div', { class: 'banner bad', role: 'alert' }, icon('alert', 28),
-          h('div', { class: 'body' }, h('b', {}, 'Docker ne répond pas'),
-            h('div', { class: 'detail' }, 'Gaïa ne peut ni lire ni relancer les services pour l’instant.'))));
+          h('div', { class: 'body' }, h('b', {}, 'Docker is not responding'),
+            h('div', { class: 'detail' }, 'Gaïa can neither read nor restart the services for now.'))));
       }
 
       if (isStarting() && !app.busy) out.push(startingBanner());
@@ -476,8 +649,8 @@
         const index = Math.max(INSTALL_STEPS.indexOf(i.step), 0);
         out.push(h('div', { class: 'banner busy', role: 'status' }, h('span', { class: 'spinner' }),
           h('div', { class: 'body' },
-            h('b', {}, `Installation du module ${repoName(i.repositoryUrl)}`),
-            h('div', { class: 'detail' }, `${INSTALL_STEP_LABELS[i.step] || i.step} · étape ${index + 1} sur ${INSTALL_STEPS.length}`))));
+            h('b', {}, `Installing module ${repoName(i.repositoryUrl)}`),
+            h('div', { class: 'detail' }, `${INSTALL_STEP_LABELS[i.step] || i.step} · step ${index + 1} of ${INSTALL_STEPS.length}`))));
       });
 
       // diagnostic
@@ -485,26 +658,26 @@
         const envOk = envIssues.length === 0;
         out.push(h('div', { class: 'row3' },
           h('div', { class: 'card' }, h('div', { class: 'stat-label' }, 'Docker'),
-            h('div', { class: 'stat-value' + (dockerOk ? '' : ' bad') }, dockerOk ? 'Accessible' : 'Indisponible'),
-            h('div', { class: 'stat-note' }, dockerOk ? 'Le moteur répond' : 'Le moteur ne répond pas')),
-          h('div', { class: 'card' }, h('div', { class: 'stat-label' }, 'Version de Docker'),
+            h('div', { class: 'stat-value' + (dockerOk ? '' : ' bad') }, dockerOk ? 'Reachable' : 'Unavailable'),
+            h('div', { class: 'stat-note' }, dockerOk ? 'The engine responds' : 'The engine is not responding')),
+          h('div', { class: 'card' }, h('div', { class: 'stat-label' }, 'Docker version'),
             dockerOk
               ? h('div', { class: 'stat-value' }, status.dockerServerVersion || '—')
               : h('div', { class: 'stat-value mono bad' }, status.dockerError || '—'),
-            h('div', { class: 'stat-note' }, dockerOk ? 'Version du moteur' : 'Message renvoyé par Docker')),
-          h('div', { class: 'card' }, h('div', { class: 'stat-label' }, 'Variables d’environnement'),
-            h('div', { class: 'stat-value' }, envOk ? 'Prêtes' : 'Incomplètes'),
-            h('div', { class: 'stat-note' }, envOk ? 'Aucune erreur' : plural(envIssues.length, 'à corriger', 'à corriger')))));
+            h('div', { class: 'stat-note' }, dockerOk ? 'Engine version' : 'Message returned by Docker')),
+          h('div', { class: 'card' }, h('div', { class: 'stat-label' }, 'Environment variables'),
+            h('div', { class: 'stat-value' }, envOk ? 'Ready' : 'Incomplete'),
+            h('div', { class: 'stat-note' }, envOk ? 'No errors' : plural(envIssues.length, 'to fix', 'to fix')))));
 
         out.push(servicesCard(status, dockerOk, !!app.busy));
 
         out.push(installsCard());
         out.push(h('div', { class: 'cols' },
           h('div', { class: 'stack' },
-            h('section', { class: 'card' }, h('h2', {}, 'Variables requises'),
+            h('section', { class: 'card' }, h('h2', {}, 'Required variables'),
               envIssues.length
                 ? h('ul', { class: 'plain' }, envIssues.map(e => h('li', { class: 'bad' }, h('i', { class: 'dot' }), e)))
-                : h('div', { class: 'empty' }, icon('check', 20), 'Aucune erreur détectée')),
+                : h('div', { class: 'empty' }, icon('check', 20), 'No errors detected')),
             requiredModulesCard(state, status)),
           h('div', { class: 'wide' }, lastOperationCard(state, status))));
       }
@@ -514,8 +687,8 @@
     function installsCard() {
       const recent = app.installs.filter(i => !isActiveInstall(i));
       if (!recent.length) return null;
-      const stateOf = i => i.status === 'completed' ? ['ok', 'Terminée'] : i.status === 'failed' ? ['bad', 'Échec'] : ['idle', i.status];
-      return h('section', { class: 'card' }, h('h2', {}, 'Installations de modules'),
+      const stateOf = i => i.status === 'completed' ? ['ok', 'Completed'] : i.status === 'failed' ? ['bad', 'Failed'] : ['idle', i.status];
+      return h('section', { class: 'card' }, h('h2', {}, 'Module installations'),
         h('ul', { class: 'plain' }, recent.map(i => {
           const st = stateOf(i);
           return h('li', { class: i.status === 'failed' ? 'bad' : '' },
@@ -527,12 +700,12 @@
     }
 
     function restartConfirm() {
-      return h('section', { class: 'confirm soft', role: 'group', 'aria-label': 'Confirmer le redémarrage' },
-        h('h3', {}, 'Redémarrer et mettre à jour les modules ?'),
-        h('div', {}, 'Gaïa récupère les dernières versions puis relance tous les modules. Ils peuvent être indisponibles quelques instants.'),
+      return h('section', { class: 'confirm soft', role: 'group', 'aria-label': 'Confirm restart' },
+        h('h3', {}, 'Restart and update modules?'),
+        h('div', {}, 'Gaïa fetches the latest versions then restarts every module. They may be unavailable for a few moments.'),
         h('div', { class: 'actions', style: 'margin-top:16px' },
-          h('button', { class: 'btn primary', onclick: () => runOperation('restart') }, 'Redémarrer'),
-          h('button', { class: 'btn', onclick: () => { app.confirm = null; render(); } }, 'Annuler')));
+          h('button', { class: 'btn primary', onclick: () => runOperation('restart') }, 'Restart'),
+          h('button', { class: 'btn', onclick: () => { app.confirm = null; render(); } }, 'Cancel')));
     }
 
     function resetConfirm(status) {
@@ -541,59 +714,59 @@
       names.forEach((n, i) => {
         list.push(h('b', { class: 'mono', style: 'font-weight:500' }, n));
         if (i < names.length - 2) list.push(', ');
-        else if (i === names.length - 2) list.push(' et ');
+        else if (i === names.length - 2) list.push(' and ');
       });
       const checkbox = h('input', { type: 'checkbox', id: 'wipe', onchange: e => { app.wipeData = e.target.checked; } });
       checkbox.checked = app.wipeData;
-      return h('section', { class: 'confirm', role: 'group', 'aria-label': 'Confirmer la réinitialisation' },
-        h('h3', {}, 'Réinitialiser les services partagés ?'),
-        h('div', {}, 'Gaïa va supprimer les conteneurs ', list.length ? list : 'des services partagés', ', puis les redéployer. Les modules sont coupés pendant ce temps.'),
+      return h('section', { class: 'confirm', role: 'group', 'aria-label': 'Confirm reset' },
+        h('h3', {}, 'Reset shared services?'),
+        h('div', {}, 'Gaïa will delete the containers ', list.length ? list : 'of the shared services', ', then redeploy them. Modules are cut off in the meantime.'),
         h('label', { for: 'wipe' }, checkbox,
-          h('span', {}, h('b', { style: 'font-weight:500' }, 'Supprimer aussi les données'),
-            h('span', { class: 'why' }, 'Efface les volumes Docker : bases, messages et files seront vides. Impossible à annuler.'))),
+          h('span', {}, h('b', { style: 'font-weight:500' }, 'Also delete the data'),
+            h('span', { class: 'why' }, 'Erases the Docker volumes: databases, messages and queues will be empty. This cannot be undone.'))),
         h('div', { class: 'actions' },
-          h('button', { class: 'btn danger', onclick: () => runOperation('reset') }, 'Réinitialiser'),
-          h('button', { class: 'btn', onclick: () => { app.confirm = null; render(); } }, 'Annuler')));
+          h('button', { class: 'btn danger', onclick: () => runOperation('reset') }, 'Reset'),
+          h('button', { class: 'btn', onclick: () => { app.confirm = null; render(); } }, 'Cancel')));
     }
 
     function badgeFor(service) {
       if (service.isRunning && service.matchesExpectedImage) return h('span', { class: 'badge ok' }, 'OK');
-      if (service.isPresent) return h('span', { class: 'badge warn' }, service.isRunning ? 'À mettre à jour' : 'Arrêté');
-      return h('span', { class: 'badge bad' }, 'Manquant');
+      if (service.isPresent) return h('span', { class: 'badge warn' }, service.isRunning ? 'Needs update' : 'Stopped');
+      return h('span', { class: 'badge bad' }, 'Missing');
     }
 
     function servicesCard(status, dockerOk, dim) {
-      const card = h('section', { class: 'card' }, h('h2', {}, 'Services essentiels'));
+      const card = h('section', { class: 'card' }, h('h2', {}, 'Essential services'));
       if (!dockerOk) {
         card.append(h('div', { class: 'empty', style: 'color:var(--late)' }, icon('alert', 26),
-          h('span', { style: 'color:var(--muted)' }, 'Gaïa ne peut pas lire les services tant que Docker ne répond pas. Relancez Docker sur le serveur, puis vérifiez l’état.')));
+          h('span', { style: 'color:var(--muted)' }, 'Gaïa cannot read the services while Docker is not responding. Restart Docker on the server, then check the status.')));
         return card;
       }
-      card.append(h('p', { class: 'muted', style: 'margin:-6px 0 8px' }, 'Ce que Gaïa maintient en marche pour que la maison fonctionne.'));
-      if (dim) card.append(h('p', { class: 'muted', style: 'margin:0 0 8px;font-size:14px' }, 'État avant l’opération en cours.'));
+      card.append(h('p', { class: 'muted', style: 'margin:-6px 0 8px' }, 'What Gaïa keeps running so the home works.'));
+      if (dim) card.append(h('p', { class: 'muted', style: 'margin:0 0 8px;font-size:14px' }, 'State before the current operation.'));
       const rows = [];
       const addGroup = (name, items) => {
         if (!items?.length) return;
         rows.push(h('tr', { class: 'group' }, h('td', { colspan: 4 }, `${name} · ${plural(items.length, 'service', 'services')}`)));
         items.forEach(s => {
           const current = s.currentImage
-            ? h('div', { class: 'mono sub' }, 'en place : ', s.currentImage)
-            : h('div', { class: 'sub', style: 'font-size:14px' }, 'aucune image en place');
+            ? h('div', { class: 'mono sub' }, 'in place: ', s.currentImage)
+            : h('div', { class: 'sub', style: 'font-size:14px' }, 'no image in place');
           rows.push(h('tr', { class: 'svc' },
             h('td', { class: 'svc-name' }, h('b', {}, s.displayName || s.serviceName), h('span', { class: 'mono sub' }, s.serviceName)),
             h('td', {}, h('div', { class: 'mono' }, s.expectedImage || '—'), current),
-            h('td', { class: 'mono' }, s.publishedPorts?.length ? s.publishedPorts.join(', ') : 'Aucun'),
+            h('td', { class: 'mono' }, s.publishedPorts?.length ? s.publishedPorts.join(', ') : 'None'),
             h('td', {}, badgeFor(s))));
         });
       };
-      addGroup('Cœur', status.coreServices);
-      addGroup('Services partagés', status.sharedServices);
+      addGroup('Core', status.coreServices);
+      addGroup('Shared services', status.sharedServices);
       if (!rows.length) {
-        card.append(h('div', { class: 'empty' }, 'Aucun service à afficher pour l’instant.'));
+        card.append(h('div', { class: 'empty' }, 'No service to display yet.'));
         return card;
       }
       card.append(h('div', { class: 'table-wrap' }, h('table', {},
-        h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, 'Service'), h('th', { scope: 'col' }, 'Image attendue'), h('th', { scope: 'col' }, 'Ports'), h('th', { scope: 'col' }, 'État'))),
+        h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, 'Service'), h('th', { scope: 'col' }, 'Expected image'), h('th', { scope: 'col' }, 'Ports'), h('th', { scope: 'col' }, 'Status'))),
         h('tbody', {}, rows))));
       return card;
     }
@@ -601,13 +774,13 @@
     function requiredModulesCard(state, status) {
       const ids = state?.options?.requiredPluginIds || [];
       const missing = new Set(status?.missingRequiredPluginIds || []);
-      return h('section', { class: 'card' }, h('h2', {}, 'Modules requis'),
+      return h('section', { class: 'card' }, h('h2', {}, 'Required modules'),
         ids.length
           ? h('ul', { class: 'plain' }, ids.map(id => h('li', { class: missing.has(id) ? 'bad' : '' },
               h('span', { style: 'display:inline-flex;color:' + (missing.has(id) ? 'var(--late)' : 'var(--ok)') }, icon(missing.has(id) ? 'alert' : 'check', 22)),
               h('span', { style: 'flex:1;min-width:0' }, id),
-              h('span', { class: 'sub', style: 'font-size:14px;font-weight:300' }, missing.has(id) ? 'Absent du catalogue local d’installation' : 'Disponible'))))
-          : h('div', { class: 'empty' }, 'Aucun module requis'));
+              h('span', { class: 'sub', style: 'font-size:14px;font-weight:300' }, missing.has(id) ? 'Not in the local installation catalogue' : 'Available'))))
+          : h('div', { class: 'empty' }, 'No required module'));
     }
 
     function lastOperationCard(state, status) {
@@ -615,28 +788,28 @@
       const code = t => h('span', { class: 'mono' }, t);
       if (state?.lastError) lines.push({ bad: true, node: [state.lastError] });
       (status?.operationErrors || []).forEach(e => lines.push({ bad: true, node: [e] }));
-      if (status?.removedSharedServices?.length) lines.push({ node: ['Conteneurs supprimés : ', code(status.removedSharedServices.join(', '))] });
-      if (status?.removedDataVolumes?.length) lines.push({ node: ['Volumes supprimés : ', code(status.removedDataVolumes.join(', '))] });
-      if (status?.deployedSharedServices?.length) lines.push({ node: ['Services partagés déployés : ', code(status.deployedSharedServices.join(', '))] });
-      if (status?.deployedCoreServices?.length) lines.push({ node: ['Cœur déployé : ', code(status.deployedCoreServices.join(', '))] });
-      if (status?.deployedPlugins?.length) lines.push({ node: ['Modules redéployés : ', code(status.deployedPlugins.join(', '))] });
+      if (status?.removedSharedServices?.length) lines.push({ node: ['Containers removed: ', code(status.removedSharedServices.join(', '))] });
+      if (status?.removedDataVolumes?.length) lines.push({ node: ['Volumes removed: ', code(status.removedDataVolumes.join(', '))] });
+      if (status?.deployedSharedServices?.length) lines.push({ node: ['Shared services deployed: ', code(status.deployedSharedServices.join(', '))] });
+      if (status?.deployedCoreServices?.length) lines.push({ node: ['Core deployed: ', code(status.deployedCoreServices.join(', '))] });
+      if (status?.deployedPlugins?.length) lines.push({ node: ['Modules redeployed: ', code(status.deployedPlugins.join(', '))] });
       (status?.operationMessages || []).forEach(m => lines.push({ node: [m] }));
-      return h('section', { class: 'card' }, h('h2', {}, 'Dernière opération'),
+      return h('section', { class: 'card' }, h('h2', {}, 'Last operation'),
         lines.length
           ? h('ul', { class: 'plain' }, lines.map(l => h('li', { class: l.bad ? 'bad' : '' }, h('i', { class: 'dot' }), h('span', { style: 'flex:1;min-width:0' }, l.node))))
-          : h('div', { class: 'empty' }, 'Aucune erreur récente'));
+          : h('div', { class: 'empty' }, 'No recent errors'));
     }
 
     function renderRoutes() {
-      const out = [pageHeader('Comment chaque module est joint depuis la console')];
+      const out = [pageHeader('How each module is reached from the console')];
       if (!app.routes) { out.push(app.loadError ? h('div', { class: 'empty' }, app.loadError) : startingBanner()); return out; }
       if (!app.routes.length) {
-        out.push(h('div', { class: 'card' }, h('div', { class: 'empty' }, 'Aucune route calculée pour l’instant')));
+        out.push(h('div', { class: 'card' }, h('div', { class: 'empty' }, 'No route computed yet')));
         return out;
       }
       out.push(h('div', { class: 'grid-routes' }, app.routes.map(route => {
         const isError = !!route.error;
-        const kind = isError ? ['bad', 'Erreur'] : route.localUrl ? ['ok', 'Routable'] : ['warn', 'Calculé'];
+        const kind = isError ? ['bad', 'Error'] : route.localUrl ? ['ok', 'Routable'] : ['warn', 'Computed'];
         const name = route.pluginDisplayName || route.pluginId || route.repositoryRootPath || 'Module';
         const head = h('div', { class: 'route-head' },
           h('span', { class: 't' }, h('b', {}, name), route.pluginId ? h('span', { class: 'mono sub' }, route.pluginId) : null),
@@ -644,23 +817,23 @@
         if (isError) return h('section', { class: 'card' }, head, h('div', { style: 'color:var(--late)' }, route.error));
         const m = v => h('span', { class: 'mono' }, v);
         return h('section', { class: 'card' }, head, h('dl', { class: 'kv' },
-          h('dt', {}, 'Chemin'), h('dd', {}, m(route.publicBasePath || '—')),
+          h('dt', {}, 'Path'), h('dd', {}, m(route.publicBasePath || '—')),
           h('dt', {}, 'Service'), h('dd', {}, m(route.composeServiceName || '—')),
-          h('dt', {}, 'Port du conteneur'), h('dd', {}, m(String(route.servicePort ?? '—'))),
-          h('dt', {}, 'Règle Traefik'), h('dd', {}, m(route.routerRule || '—')),
-          h('dt', {}, 'Ressource Traefik'), h('dd', {}, m(route.traefikResourceName || '—')),
-          h('dt', {}, 'Adresse locale'), h('dd', {}, route.localUrl ? m(route.localUrl) : h('span', { class: 'muted' }, 'Port local pas encore disponible'))));
+          h('dt', {}, 'Container port'), h('dd', {}, m(String(route.servicePort ?? '—'))),
+          h('dt', {}, 'Traefik rule'), h('dd', {}, m(route.routerRule || '—')),
+          h('dt', {}, 'Traefik resource'), h('dd', {}, m(route.traefikResourceName || '—')),
+          h('dt', {}, 'Local address'), h('dd', {}, route.localUrl ? m(route.localUrl) : h('span', { class: 'muted' }, 'Local port not available yet'))));
       })));
       return out;
     }
 
     function renderDeployments() {
-      const out = [pageHeader('Ce que chaque module apporte à la console, version après version')];
+      const out = [pageHeader('What each module adds to the console, version after version')];
       const diffs = app.state?.adminUiDeploymentDiffs || [];
       const deployments = app.state?.adminUiDeployments || [];
       if (!app.state) { out.push(app.loadError ? h('div', { class: 'empty' }, app.loadError) : startingBanner()); return out; }
       if (!diffs.length) {
-        out.push(h('div', { class: 'card' }, h('div', { class: 'empty' }, 'Aucun déploiement enregistré')));
+        out.push(h('div', { class: 'card' }, h('div', { class: 'empty' }, 'No deployment recorded')));
         return out;
       }
       const labelOf = (pluginId, contributionId) => {
@@ -678,23 +851,23 @@
         const item = (sign, cls, id) => h('div', { class: 'change' }, h('span', { class: 'sign ' + cls }, sign),
           h('span', { class: 'mono' }, id), labelOf(diff.pluginId, id) ? h('span', { class: 'muted', style: 'font-size:14px' }, '— ' + labelOf(diff.pluginId, id)) : null);
         const chips = [];
-        if (added.length) chips.push(h('span', { class: 'badge ok' }, plural(added.length, 'ajoutée', 'ajoutées')));
-        if (modified.length) chips.push(h('span', { class: 'badge warn' }, plural(modified.length, 'modifiée', 'modifiées')));
-        if (removed.length) chips.push(h('span', { class: 'badge bad' }, plural(removed.length, 'retirée', 'retirées')));
-        if (same.length) chips.push(h('span', { class: 'badge idle' }, plural(same.length, 'inchangée', 'inchangées')));
+        if (added.length) chips.push(h('span', { class: 'badge ok' }, plural(added.length, 'added', 'added')));
+        if (modified.length) chips.push(h('span', { class: 'badge warn' }, plural(modified.length, 'modified', 'modified')));
+        if (removed.length) chips.push(h('span', { class: 'badge bad' }, plural(removed.length, 'removed', 'removed')));
+        if (same.length) chips.push(h('span', { class: 'badge idle' }, plural(same.length, 'unchanged', 'unchanged')));
         return h('section', { class: 'card' },
           h('div', { class: 'dep-head' },
             h('span', { class: 't' }, h('b', {}, dep?.pluginDisplayName || diff.pluginId), h('span', { class: 'mono sub' }, diff.pluginId)),
             h('span', { class: 'version-line' },
               changed ? [h('span', { class: 'mono sub', style: 'font-size:15px' }, diff.previousVersion), h('span', { class: 'sub' }, '→')] : null,
               h('span', { class: 'mono', style: 'font-size:15px;font-weight:500' }, diff.currentVersion || '—'),
-              !changed && diff.previousVersion ? h('span', { class: 'muted', style: 'font-size:14px' }, 'Version inchangée') : null)),
+              !changed && diff.previousVersion ? h('span', { class: 'muted', style: 'font-size:14px' }, 'Version unchanged') : null)),
           h('div', { class: 'chips' }, chips),
           added.map(id => item('+', 'add', id)),
           modified.map(id => item('~', 'mod', id)),
           removed.map(id => item('−', 'del', id)),
           !added.length && !modified.length && !removed.length
-            ? h('span', { class: 'muted' }, 'Aucun changement depuis la version précédente.') : null);
+            ? h('span', { class: 'muted' }, 'No change since the previous version.') : null);
       })));
       return out;
     }
