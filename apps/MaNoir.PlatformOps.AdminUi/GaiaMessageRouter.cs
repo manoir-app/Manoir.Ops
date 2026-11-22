@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Home.Common.Messages;
@@ -16,6 +18,7 @@ public sealed class GaiaMessageRouter
 	private readonly ILogger<GaiaMessageRouter> _logger;
 	private readonly GaiaAgentRuntime _runtime;
 	private readonly ConcurrentDictionary<string, GaiaPluginInstallationStatusResponse> _pluginInstallations = new();
+	private readonly ConcurrentDictionary<string, DateTimeOffset> _pluginInstallationUpdates = new();
 
 	public GaiaMessageRouter(GaiaOperationsService gaia, GaiaAgentRuntime runtime, IHostApplicationLifetime hostApplicationLifetime, ILogger<GaiaMessageRouter> logger)
 	{
@@ -139,8 +142,30 @@ public sealed class GaiaMessageRouter
 			};
 	}
 
+	/// <summary>
+	/// Returns the most recent plugin installations known to this Gaia instance, newest first.
+	/// The state is held in memory: it is lost when Gaia restarts.
+	/// </summary>
+	public IReadOnlyList<GaiaPluginInstallationView> GetPluginInstallations(int maxCount = 10)
+	{
+		return _pluginInstallations
+			.Select(entry => new GaiaPluginInstallationView()
+			{
+				OperationId = entry.Key,
+				RepositoryUrl = entry.Value.RepositoryUrl,
+				Status = entry.Value.Status,
+				Step = entry.Value.Step,
+				Message = entry.Value.Message,
+				UpdatedAtUtc = _pluginInstallationUpdates.TryGetValue(entry.Key, out DateTimeOffset updatedAtUtc) ? updatedAtUtc : DateTimeOffset.MinValue
+			})
+			.OrderByDescending(view => view.UpdatedAtUtc)
+			.Take(maxCount)
+			.ToArray();
+	}
+
 	private void SetInstallationStatus(string operationId, string repositoryUrl, string status, string step, string message)
 	{
+		_pluginInstallationUpdates[operationId] = DateTimeOffset.UtcNow;
 		_pluginInstallations[operationId] = new GaiaPluginInstallationStatusResponse()
 		{
 			Response = "ok",
@@ -151,4 +176,19 @@ public sealed class GaiaMessageRouter
 			Message = message
 		};
 	}
+}
+
+public sealed class GaiaPluginInstallationView
+{
+	public string OperationId { get; set; }
+
+	public string RepositoryUrl { get; set; }
+
+	public string Status { get; set; }
+
+	public string Step { get; set; }
+
+	public string Message { get; set; }
+
+	public DateTimeOffset UpdatedAtUtc { get; set; }
 }

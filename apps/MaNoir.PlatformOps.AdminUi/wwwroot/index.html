@@ -242,6 +242,7 @@
       loadError: null,
       busy: null,        // { title, detail }
       result: null,      // { kind, title, detail, error }
+      installs: [],      // installations de modules connues de Gaia
       confirm: null,     // 'reset' | 'restart'
       wipeData: false
     };
@@ -280,8 +281,36 @@
       } catch (error) {
         app.loadError = error.message;
       }
+      await loadInstalls();
       if (app.tab === 'routage') await loadRoutes();
       render();
+    }
+
+    const INSTALL_STEPS = ['accepted', 'bootstrap', 'sync-catalog', 'resolve-manifest', 'deploy', 'runtime-state'];
+    const INSTALL_STEP_LABELS = {
+      'accepted': 'Demande reçue',
+      'bootstrap': 'Préparation des services partagés',
+      'sync-catalog': 'Synchronisation du catalogue',
+      'resolve-manifest': 'Lecture du manifeste du module',
+      'deploy': 'Déploiement des conteneurs',
+      'runtime-state': 'Publication de l’état du module',
+      'completed': 'Installation terminée',
+      'failed': 'Échec de l’installation'
+    };
+    const isActiveInstall = i => i.status === 'accepted' || i.status === 'running';
+
+    async function loadInstalls() {
+      try {
+        app.installs = await callApi('/api/ops/gaia/plugin-installations', 'GET');
+      } catch (error) {
+        // endpoint absent (ancienne version de Gaia) : on n'affiche simplement rien
+        app.installs = [];
+      }
+    }
+
+    function repoName(url) {
+      if (!url) return 'module';
+      return url.replace(/\.git$/, '').split('/').filter(Boolean).pop() || url;
     }
 
     async function loadRoutes() {
@@ -416,6 +445,16 @@
             h('div', { class: 'detail' }, 'Gaïa ne peut ni lire ni relancer les services pour l’instant.'))));
       }
 
+      // installations de modules (suivi en direct)
+      const activeInstalls = app.installs.filter(isActiveInstall);
+      activeInstalls.forEach(i => {
+        const index = Math.max(INSTALL_STEPS.indexOf(i.step), 0);
+        out.push(h('div', { class: 'banner busy', role: 'status' }, h('span', { class: 'spinner' }),
+          h('div', { class: 'body' },
+            h('b', {}, `Installation du module ${repoName(i.repositoryUrl)}`),
+            h('div', { class: 'detail' }, `${INSTALL_STEP_LABELS[i.step] || i.step} · étape ${index + 1} sur ${INSTALL_STEPS.length}`))));
+      });
+
       // diagnostic
       if (status) {
         const envOk = envIssues.length === 0;
@@ -434,6 +473,7 @@
 
         out.push(servicesCard(status, dockerOk, !!app.busy));
 
+        out.push(installsCard());
         out.push(h('div', { class: 'cols' },
           h('div', { class: 'stack' },
             h('section', { class: 'card' }, h('h2', {}, 'Variables requises'),
@@ -444,6 +484,21 @@
           h('div', { class: 'wide' }, lastOperationCard(state, status))));
       }
       return out;
+    }
+
+    function installsCard() {
+      const recent = app.installs.filter(i => !isActiveInstall(i));
+      if (!recent.length) return null;
+      const stateOf = i => i.status === 'completed' ? ['ok', 'Terminée'] : i.status === 'failed' ? ['bad', 'Échec'] : ['idle', i.status];
+      return h('section', { class: 'card' }, h('h2', {}, 'Installations de modules'),
+        h('ul', { class: 'plain' }, recent.map(i => {
+          const st = stateOf(i);
+          return h('li', { class: i.status === 'failed' ? 'bad' : '' },
+            h('span', { style: 'flex:1;min-width:0' }, h('b', { style: 'font-weight:500' }, repoName(i.repositoryUrl)),
+              i.status === 'failed' && i.message ? h('div', { class: 'sub', style: 'font-size:14px;font-weight:300' }, i.message) : null),
+            h('span', { class: 'sub', style: 'font-size:14px' }, formatTime(i.updatedAtUtc) || ''),
+            h('span', { class: 'badge ' + st[0] }, st[1]));
+        })));
     }
 
     function restartConfirm() {
@@ -631,6 +686,15 @@
     applyHash();
     loadState();
     setInterval(() => { if (!app.busy && !app.confirm) loadState(); }, 30000);
+    // pendant une installation de module, on suit l'avancement de près
+    setInterval(async () => {
+      if (app.tab !== 'essentiel' || app.busy) return;
+      const hadActive = app.installs.some(isActiveInstall);
+      await loadInstalls();
+      if (hadActive || app.installs.some(isActiveInstall)) {
+        if (hadActive && !app.installs.some(isActiveInstall)) { await loadState(); } else { render(); }
+      }
+    }, 3000);
   </script>
 </body>
 </html>
