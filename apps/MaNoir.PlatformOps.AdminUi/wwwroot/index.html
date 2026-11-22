@@ -3,434 +3,214 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MaNoir Ops</title>
+  <title>MaNoir — Plateforme</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #f4efe6;
-      --panel: rgba(255, 251, 244, 0.86);
-      --panel-strong: #fffaf2;
-      --ink: #1f2933;
-      --muted: #66737f;
-      --accent: #b64926;
-      --accent-dark: #8f3518;
-      --line: rgba(31, 41, 51, 0.12);
-      --good: #24613a;
-      --warn: #a36b16;
-      --bad: #9b2c2c;
-      --shadow: 0 24px 80px rgba(77, 55, 33, 0.12);
+      --bg: #FAF8F4;
+      --tonal: #F3EFE8;
+      --raised: #FFFDF9;
+      --yellow: #F4DE96;
+      --ink: #1E1A1D;
+      --muted: #6F666A;
+      --faint: #7A7074;
+      --line: #EAE4DA;
+      --prune: #7E2A47;
+      --prune-hover: #651F38;
+      --late: #B4460F;
+      --late-tint: #FFE9DE;
+      --ok: #2E7D4A;
+      --ok-tint: #E3F0E4;
+      --warn: #8A6A00;
+      --warn-tint: #FBF1CF;
+      --font-sans: "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-mono: "DM Mono", ui-monospace, Menlo, Consolas, monospace;
+      --blob: 42% 58% 52% 48% / 48% 44% 56% 52%;
     }
 
     * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 16px; line-height: 1.5; }
+    :focus-visible { outline: 3px solid var(--prune); outline-offset: 2px; }
+    .mono { font-family: var(--font-mono); font-size: 13px; letter-spacing: .01em; }
+    .muted { color: var(--muted); font-weight: 300; }
+    .layout { display: flex; flex-wrap: wrap; min-height: 100vh; }
 
-    body {
-      margin: 0;
-      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
-      color: var(--ink);
-      background:
-        radial-gradient(circle at top left, rgba(182, 73, 38, 0.18), transparent 22%),
-        radial-gradient(circle at right 10% top 20%, rgba(33, 78, 102, 0.12), transparent 18%),
-        linear-gradient(180deg, #f8f3eb 0%, var(--bg) 100%);
-      min-height: 100vh;
-    }
+    /* Rail */
+    .rail { flex: 0 0 96px; width: 96px; padding: 28px 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .logo { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: var(--prune); color: var(--bg); font-weight: 600; font-size: 24px; text-decoration: none; border-radius: var(--blob); }
+    .rail nav { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .rl { position: relative; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; color: var(--faint); text-decoration: none; border-radius: var(--blob); }
+    .rl:hover { background: var(--tonal); color: var(--ink); }
+    .rl.on { background: var(--yellow); color: var(--ink); }
+    .rl .tip { position: absolute; left: 62px; top: 50%; transform: translateY(-50%); background: var(--ink); color: #fff; font-size: 13px; padding: 4px 10px; border-radius: 999px; white-space: nowrap; opacity: 0; pointer-events: none; z-index: 5; }
+    .rl:hover .tip, .rl:focus-visible .tip { opacity: 1; }
 
-    .shell {
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 32px 20px 48px;
-    }
+    /* Main */
+    main { flex: 999 1 560px; min-width: 0; max-width: 1300px; padding: 36px 56px 64px 24px; display: flex; flex-direction: column; gap: 28px; }
+    header.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; }
+    .brand { display: flex; align-items: baseline; gap: 10px; margin-bottom: 2px; }
+    .brand b { font-size: 22px; font-weight: 500; letter-spacing: -.02em; color: var(--prune); }
+    h1 { margin: 0; font-size: 40px; font-weight: 500; letter-spacing: -.02em; line-height: 1.15; }
+    h2 { margin: 0 0 12px; font-size: 22px; font-weight: 500; }
+    .lede { margin: 4px 0 0; color: var(--muted); font-weight: 300; }
+    .stamp { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .stamp small { color: var(--muted); font-weight: 300; font-size: 14px; }
 
-    .hero {
-      display: grid;
-      gap: 18px;
-      grid-template-columns: 1.2fr 0.8fr;
-      align-items: stretch;
-      margin-bottom: 24px;
-    }
+    .state { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 999px; font-size: 14px; font-weight: 500; white-space: nowrap; }
+    .state i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .state.ok { background: var(--ok-tint); color: var(--ok); }
+    .state.warn { background: var(--warn-tint); color: var(--warn); }
+    .state.bad { background: var(--late-tint); color: var(--late); }
+    .state.idle { background: var(--tonal); color: var(--muted); }
+    .badge { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+    .badge.ok { background: var(--ok-tint); color: var(--ok); }
+    .badge.warn { background: var(--warn-tint); color: var(--warn); }
+    .badge.bad { background: var(--late-tint); color: var(--late); }
+    .badge.idle { background: var(--line); color: var(--muted); }
 
-    .card {
-      background: var(--panel);
-      -webkit-backdrop-filter: blur(14px);
-      backdrop-filter: blur(14px);
-      border: 1px solid var(--line);
-      border-radius: 24px;
-      box-shadow: var(--shadow);
-    }
+    /* Buttons */
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 28px; border-radius: 999px; border: 0; font: inherit; font-weight: 500; cursor: pointer; background: var(--tonal); color: var(--ink); }
+    .btn:hover:not(:disabled) { background: var(--yellow); }
+    .btn.primary { background: var(--prune); color: #fff; }
+    .btn.primary:hover:not(:disabled) { background: var(--prune-hover); }
+    .btn.link { background: transparent; padding: 0 8px; text-decoration: underline; text-underline-offset: 5px; }
+    .btn.link:hover:not(:disabled) { background: transparent; color: var(--prune); }
+    .btn.danger-link { background: transparent; color: var(--late); padding: 0 8px; text-decoration: underline; text-underline-offset: 5px; }
+    .btn.danger-link:hover:not(:disabled) { background: var(--late-tint); }
+    .btn.danger { background: var(--late); color: #fff; }
+    .btn.danger:hover:not(:disabled) { background: #8F360B; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .btn svg { flex: 0 0 20px; }
 
-    .hero-main {
-      padding: 28px;
-    }
+    /* Cards */
+    .card { background: var(--tonal); border-radius: 28px; padding: 24px 26px; }
+    .card.bad { background: var(--late-tint); }
+    .card.ok { background: var(--ok-tint); }
+    .card.warn { background: var(--warn-tint); }
+    .banner { display: flex; gap: 16px; align-items: flex-start; border-radius: 28px; padding: 22px 28px; }
+    .banner b { font-weight: 500; font-size: 20px; display: block; }
+    .banner .body { flex: 1; min-width: 0; }
+    .banner.bad { background: var(--late-tint); color: var(--late); }
+    .banner.bad .detail { color: #4A4247; }
+    .banner.ok { background: var(--ok-tint); color: var(--ok); }
+    .banner.warn { background: var(--warn-tint); color: var(--warn); }
+    .banner.busy { background: var(--yellow); color: var(--ink); }
+    .banner .detail { color: var(--ink); margin-top: 4px; }
+    .spinner { width: 24px; height: 24px; border-radius: 50%; border: 3px solid rgba(30, 26, 29, .2); border-top-color: var(--ink); animation: spin 1s linear infinite; flex: 0 0 24px; margin-top: 2px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 4s; } }
+    .row3 { display: flex; flex-wrap: wrap; gap: 20px; }
+    .row3 > .card { flex: 1 1 220px; min-width: 0; padding: 22px 26px; }
+    .stat-label { color: var(--muted); font-size: 15px; }
+    .stat-value { font-size: 28px; font-weight: 500; letter-spacing: -.02em; margin-top: 4px; }
+    .stat-value.mono { font-size: 15px; font-weight: 400; margin-top: 10px; line-height: 1.45; word-break: break-word; }
+    .stat-value.bad { color: var(--late); }
+    .stat-note { margin-top: 2px; font-size: 14px; color: var(--muted); font-weight: 300; }
+    .cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+    .cols > .stack { flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+    .cols > .wide { flex: 1.3 1 460px; min-width: 0; }
 
-    .eyebrow {
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      font-size: 12px;
-      color: var(--accent);
-      font-weight: 700;
-      margin-bottom: 14px;
-    }
+    /* Panel confirm */
+    .confirm { background: var(--late-tint); border-radius: 28px; padding: 24px 28px; }
+    .confirm.soft { background: var(--yellow); }
+    .confirm h3 { margin: 0 0 6px; font-size: 20px; font-weight: 500; }
+    .confirm label { display: flex; gap: 14px; align-items: flex-start; margin: 16px 0; cursor: pointer; }
+    .confirm input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--late); margin: 2px 0 0; flex: 0 0 22px; }
+    .confirm .why { display: block; color: #4A4247; font-weight: 300; font-size: 14px; }
 
-    h1 {
-      margin: 0;
-      font-family: "Aptos Display", "Bahnschrift", sans-serif;
-      font-size: clamp(34px, 4vw, 58px);
-      line-height: 0.95;
-      letter-spacing: -0.05em;
-    }
+    /* Table of services */
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 14px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 8px 12px 8px 0; }
+    td { padding: 12px 12px 12px 0; vertical-align: top; }
+    tr.group td { padding: 22px 0 4px; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+    tr.svc td { border-top: 1px solid var(--line); }
+    tr.group + tr.svc td { border-top: 0; }
+    .svc-name b { font-weight: 500; display: block; }
+    .sub { color: var(--muted); }
+    .table-wrap { overflow-x: auto; }
 
-    .lead {
-      margin: 18px 0 0;
-      max-width: 58ch;
-      color: var(--muted);
-      font-size: 16px;
-      line-height: 1.55;
-    }
+    /* Lists */
+    ul.plain { list-style: none; margin: 0; padding: 0; }
+    ul.plain li { display: flex; gap: 14px; align-items: center; min-height: 44px; }
+    ul.plain li i.dot { flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    ul.plain li.bad i.dot { background: var(--late); }
+    ul.plain li.bad { color: var(--late); }
+    .empty { display: flex; align-items: center; gap: 12px; min-height: 56px; color: var(--muted); font-weight: 300; }
 
-    .hero-side {
-      padding: 24px;
-      display: grid;
-      gap: 16px;
-      align-content: start;
-      background: linear-gradient(160deg, rgba(182, 73, 38, 0.08), rgba(255,255,255,0.6));
-    }
+    /* Routes + deployments */
+    .route-head, .dep-head { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 12px; }
+    .route-head .t, .dep-head .t { flex: 1 1 220px; }
+    .route-head b, .dep-head b { font-weight: 500; font-size: 20px; display: block; }
+    dl.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 24px; margin: 0; }
+    dl.kv dt { color: var(--muted); }
+    dl.kv dd { margin: 0; min-width: 0; word-break: break-word; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .change { display: flex; gap: 12px; min-height: 32px; align-items: center; }
+    .change .sign { width: 16px; font-family: var(--font-mono); font-weight: 500; }
+    .change .sign.add { color: var(--ok); }
+    .change .sign.mod { color: var(--warn); }
+    .change .sign.del { color: var(--late); }
+    .grid-routes { display: flex; flex-direction: column; gap: 20px; }
+    .version-line { display: flex; align-items: center; gap: 10px; }
 
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.7);
-      width: fit-content;
-      font-size: 14px;
-      font-weight: 700;
-    }
-
-    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); }
-    .dot.ok { background: var(--good); }
-    .dot.bad { background: var(--bad); }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 22px;
-    }
-
-    button {
-      border: 0;
-      border-radius: 14px;
-      padding: 14px 18px;
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-      transition: transform 140ms ease, background 140ms ease, opacity 140ms ease;
-    }
-
-    button:hover { transform: translateY(-1px); }
-    button:disabled { opacity: 0.55; cursor: wait; transform: none; }
-
-    .btn-primary { background: var(--accent); color: #fff9f1; }
-    .btn-primary:hover { background: var(--accent-dark); }
-    .btn-secondary { background: rgba(31, 41, 51, 0.08); color: var(--ink); }
-    .btn-danger { background: var(--bad); color: #fff; }
-    .btn-danger:hover { background: #7a2020; }
-
-    .reset-warning {
-      margin-top: 12px;
-      padding: 12px 16px;
-      border-radius: 14px;
-      background: rgba(155, 44, 44, 0.08);
-      border: 1px solid rgba(155, 44, 44, 0.22);
-      color: var(--bad);
-      font-size: 13px;
-      line-height: 1.5;
-      display: none;
-    }
-
-    .reset-warning.visible { display: block; }
-
-    .reset-warning strong { display: block; margin-bottom: 4px; }
-
-    .reset-toggle {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 10px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .reset-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(12, minmax(0, 1fr));
-      gap: 18px;
-    }
-
-    .panel { padding: 22px; }
-    .span-4 { grid-column: span 4; }
-    .span-6 { grid-column: span 6; }
-    .span-8 { grid-column: span 8; }
-    .span-12 { grid-column: span 12; }
-
-    h2 {
-      margin: 0 0 16px;
-      font-size: 18px;
-      letter-spacing: -0.03em;
-    }
-
-    .stats {
-      display: grid;
-      gap: 12px;
-    }
-
-    .stat {
-      padding: 14px 16px;
-      border-radius: 18px;
-      background: var(--panel-strong);
-      border: 1px solid var(--line);
-    }
-
-    .stat-label {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-
-    .stat-value {
-      font-size: 22px;
-      font-weight: 700;
-    }
-
-    .service-list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .service {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-      padding: 16px;
-      border-radius: 18px;
-      background: var(--panel-strong);
-      border: 1px solid var(--line);
-    }
-
-    .service h3 {
-      margin: 0 0 6px;
-      font-size: 16px;
-    }
-
-    .service-meta {
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.45;
-      word-break: break-word;
-    }
-
-    .badge {
-      align-self: start;
-      padding: 8px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      background: rgba(36, 97, 58, 0.12);
-      color: var(--good);
-    }
-
-    .badge.warn { background: rgba(163, 107, 22, 0.14); color: var(--warn); }
-    .badge.bad { background: rgba(155, 44, 44, 0.14); color: var(--bad); }
-
-    .route-label {
-      margin-top: 6px;
-      padding-top: 6px;
-      border-top: 1px dashed rgba(31, 41, 51, 0.12);
-    }
-
-    .list {
-      margin: 0;
-      padding-left: 18px;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    .mono {
-      font-family: "IBM Plex Mono", "Cascadia Mono", monospace;
-      font-size: 13px;
-    }
-
-    .empty {
-      color: var(--muted);
-      font-style: italic;
-    }
-
-    .repo-editor {
-      width: 100%;
-      min-height: 132px;
-      resize: vertical;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 14px 16px;
-      font: inherit;
-      background: var(--panel-strong);
-      color: var(--ink);
-    }
-
-    .repo-toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 14px;
-    }
-
-    .repo-meta {
-      margin: 12px 0 18px;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    .repo-list {
-      margin-top: 18px;
-    }
-
-    .repo-meta strong {
-      color: var(--ink);
-    }
-
-    .hint {
-      margin-top: 10px;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    @media (max-width: 900px) {
-      .hero, .grid { grid-template-columns: 1fr; }
-      .span-4, .span-6, .span-8, .span-12 { grid-column: span 1; }
+    @media (max-width: 760px) {
+      main { padding: 24px 16px 48px; }
+      .rail { flex-basis: 100%; width: 100%; flex-direction: row; justify-content: flex-start; padding: 16px; }
+      .rail nav { flex-direction: row; margin: 0 0 0 12px; }
+      .rl .tip { display: none; }
+      h1 { font-size: 32px; }
+      .stamp { align-items: flex-start; }
     }
   </style>
 </head>
 <body>
-  <div class="shell">
-    <section class="hero">
-      <article class="card hero-main">
-        <div class="eyebrow">MaNoir PlatformOps</div>
-        <h1>Ops Admin UI<br>pilotée par Gaia</h1>
-        <p class="lead">
-          Cette console locale supervise le runtime Docker, contrôle le first-run, et maintient le minimum vital PlatformOps sans sortir du périmètre Ops.
-        </p>
-        <div class="actions">
-          <button id="refreshButton" class="btn-secondary">Rafraîchir l'état</button>
-          <button id="ensureButton" class="btn-primary">Assurer le minimum vital</button>
-          <button id="refreshPluginsButton" class="btn-secondary">Refresh &amp; restart all plugins</button>
-          <button id="resetButton" class="btn-danger">Réinitialiser les shared services</button>
-        </div>
-        <div id="resetWarning" class="reset-warning">
-          <strong>⚠ Attention — opération destructrice</strong>
-          Cette action arrête et supprime les conteneurs des shared services (mongo, nats, mqtt, redis), puis les redéploie depuis zéro.
-          Cochez l'option ci-dessous pour <strong>effacer également les données persistantes</strong> (volumes Docker).
-          <label class="reset-toggle">
-            <input type="checkbox" id="wipeDataCheckbox"> Supprimer les données (volumes Docker)
-          </label>
-          <div class="reset-actions">
-            <button id="confirmResetButton" class="btn-danger">Confirmer la réinitialisation</button>
-            <button id="cancelResetButton" class="btn-secondary">Annuler</button>
-          </div>
-        </div>
-      </article>
-      <aside class="card hero-side">
-        <div class="status-pill"><span id="runtimeDot" class="dot"></span><span id="runtimeText">Chargement...</span></div>
-        <div>
-          <div class="stat-label">Dernière inspection</div>
-          <div id="lastInspection" class="mono">-</div>
-        </div>
-        <div>
-          <div class="stat-label">Dernier ensure Gaia</div>
-          <div id="lastEnsure" class="mono">-</div>
-        </div>
-        <div>
-          <div class="stat-label">Chemin shared services</div>
-          <div id="sharedRoot" class="mono">-</div>
-        </div>
-      </aside>
-    </section>
-
-    <section class="grid">
-      <article class="card panel span-4">
-        <h2>Diagnostic</h2>
-        <div class="stats">
-          <div class="stat">
-            <div class="stat-label">Docker</div>
-            <div id="dockerState" class="stat-value">-</div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">Version Docker</div>
-            <div id="dockerVersion" class="stat-value">-</div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">Variables runtime</div>
-            <div id="environmentState" class="stat-value">-</div>
-          </div>
-        </div>
-      </article>
-
-      <article class="card panel span-8">
-        <h2>Minimum vital</h2>
-        <div id="serviceList" class="service-list"></div>
-      </article>
-
-      <article class="card panel span-6">
-        <h2>Variables requises</h2>
-        <ul id="environmentErrors" class="list"></ul>
-      </article>
-
-      <article class="card panel span-6">
-        <h2>Plugins requis</h2>
-        <ul id="requiredPlugins" class="list"></ul>
-      </article>
-
-      <article class="card panel span-12">
-        <h2>Routage AdminUi</h2>
-        <div id="routeList" class="service-list"></div>
-      </article>
-
-      <article class="card panel span-12">
-        <h2>Journal Gaia</h2>
-        <ul id="gaiaLog" class="list"></ul>
-      </article>
-    </section>
+  <div class="layout">
+    <aside class="rail">
+      <a class="logo" href="#essentiel" aria-label="MaNoir">M</a>
+      <nav aria-label="Plateforme" id="tabs"></nav>
+    </aside>
+    <main id="main" aria-live="polite"></main>
   </div>
 
   <script>
-    const refreshButton = document.getElementById('refreshButton');
-    const ensureButton = document.getElementById('ensureButton');
-    const refreshPluginsButton = document.getElementById('refreshPluginsButton');
-    const resetButton = document.getElementById('resetButton');
-    const confirmResetButton = document.getElementById('confirmResetButton');
-    const cancelResetButton = document.getElementById('cancelResetButton');
-    const resetWarning = document.getElementById('resetWarning');
-    const wipeDataCheckbox = document.getElementById('wipeDataCheckbox');
-    const runtimeDot = document.getElementById('runtimeDot');
-    const runtimeText = document.getElementById('runtimeText');
-    const lastInspection = document.getElementById('lastInspection');
-    const lastEnsure = document.getElementById('lastEnsure');
-    const sharedRoot = document.getElementById('sharedRoot');
-    const dockerState = document.getElementById('dockerState');
-    const dockerVersion = document.getElementById('dockerVersion');
-    const environmentState = document.getElementById('environmentState');
-    const environmentErrors = document.getElementById('environmentErrors');
-    const requiredPlugins = document.getElementById('requiredPlugins');
-    const serviceList = document.getElementById('serviceList');
-    const routeList = document.getElementById('routeList');
-    const gaiaLog = document.getElementById('gaiaLog');
+    // ---------- petits utilitaires ----------
+    function h(tag, attrs, ...children) {
+      const el = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs || {})) {
+        if (v === false || v === null || v === undefined) continue;
+        if (k === 'class') el.className = v;
+        else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+        else if (k === 'html') el.innerHTML = v;
+        else el.setAttribute(k, v === true ? '' : v);
+      }
+      for (const c of children.flat()) {
+        if (c === null || c === undefined || c === false) continue;
+        el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+      }
+      return el;
+    }
+
+    const ICONS = {
+      essentiel: '<rect x="3.5" y="4" width="17" height="6.5" rx="2.5"/><rect x="3.5" y="13.5" width="17" height="6.5" rx="2.5"/><path d="M7.5 7.2h.01M7.5 16.8h.01"/>',
+      routage: '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.5"/>',
+      deploiements: '<path d="M3.5 7.5 12 3.5l8.5 4v9L12 20.5l-8.5-4z"/><path d="M3.5 7.5 12 11.5l8.5-4M12 11.5v9"/>',
+      refresh: '<path d="M20 11a8 8 0 0 0-14-4.5L4 9M4 13a8 8 0 0 0 14 4.5L20 15M4 4v5h5M20 20v-5h-5"/>',
+      alert: '<path d="M12 4 3.5 19h17z"/><path d="M12 10v4.5M12 17.2h.01"/>',
+      check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>'
+    };
+    function icon(name, size = 24) {
+      return h('span', { html: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`, style: 'display:inline-flex' });
+    }
+
+    function formatTime(value) {
+      if (!value) return null;
+      const d = new Date(value);
+      const sameDay = d.toDateString() === new Date().toDateString();
+      return sameDay
+        ? d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        : d.toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
 
     async function callApi(url, method, body) {
       const options = { method };
@@ -443,224 +223,414 @@
         const text = await response.text();
         throw new Error(text || 'La requête a échoué.');
       }
-
       return response.json();
     }
 
-    function formatDate(value) {
-      if (!value) return '-';
-      return new Date(value).toLocaleString('fr-FR');
+    const plural = (n, one, many) => `${n} ${n > 1 ? many : one}`;
+
+    // ---------- état de la page ----------
+    const TABS = [
+      { id: 'essentiel', label: 'Essentiel' },
+      { id: 'routage', label: 'Routage' },
+      { id: 'deploiements', label: 'Déploiements' }
+    ];
+
+    const app = {
+      tab: 'essentiel',
+      state: null,
+      routes: null,
+      loadError: null,
+      busy: null,        // { title, detail }
+      result: null,      // { kind, title, detail, error }
+      confirm: null,     // 'reset' | 'restart'
+      wipeData: false
+    };
+
+    const OPERATIONS = {
+      ensure: {
+        url: '/api/ops/gaia/ensure-minimum-vital',
+        busyTitle: 'Gaïa remet l’essentiel en route',
+        busyDetail: 'Les services manquants sont en cours de déploiement. Les actions reviennent à la fin de l’opération.',
+        doneTitle: 'Essentiel remis en route'
+      },
+      inspect: {
+        url: '/api/ops/gaia/inspect',
+        busyTitle: 'Gaïa vérifie l’état',
+        busyDetail: 'Lecture des services Docker en cours.',
+        doneTitle: 'État vérifié'
+      },
+      restart: {
+        url: '/api/ops/gaia/refresh-and-restart-all-plugins',
+        busyTitle: 'Gaïa redémarre et met à jour les modules',
+        busyDetail: 'Les modules sont relancés un par un. Ils peuvent être indisponibles quelques instants.',
+        doneTitle: 'Modules redémarrés'
+      },
+      reset: {
+        url: '/api/ops/gaia/reset-shared-services',
+        busyTitle: 'Gaïa réinitialise les services partagés',
+        busyDetail: 'Les services sont supprimés puis redéployés. Les modules sont coupés pendant ce temps.',
+        doneTitle: 'Services partagés réinitialisés'
+      }
+    };
+
+    async function loadState() {
+      try {
+        app.state = await callApi('/api/ops/gaia/state', 'GET');
+        app.loadError = null;
+      } catch (error) {
+        app.loadError = error.message;
+      }
+      if (app.tab === 'routage') await loadRoutes();
+      render();
     }
 
-    function setBusy(isBusy) {
-      refreshButton.disabled = isBusy;
-      ensureButton.disabled = isBusy;
-      refreshPluginsButton.disabled = isBusy;
-      resetButton.disabled = isBusy;
-      confirmResetButton.disabled = isBusy;
+    async function loadRoutes() {
+      try {
+        app.routes = await callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET');
+      } catch (error) {
+        app.loadError = error.message;
+      }
     }
 
-    function renderDashboard(state) {
-      renderState(state);
+    async function runOperation(name) {
+      const op = OPERATIONS[name];
+      app.confirm = null;
+      app.result = null;
+      app.busy = { title: op.busyTitle, detail: op.busyDetail };
+      render();
+      try {
+        const body = name === 'reset' ? { wipeData: app.wipeData } : undefined;
+        app.state = await callApi(op.url, 'POST', body);
+        app.result = summarize(op, app.state);
+        app.loadError = null;
+      } catch (error) {
+        app.result = { kind: 'bad', title: 'L’opération a échoué', detail: error.message };
+      }
+      app.wipeData = false;
+      app.busy = null;
+      if (app.tab === 'routage') await loadRoutes();
+      render();
     }
 
-    async function fetchDashboardData() {
-      return Promise.all([
-        callApi('/api/ops/gaia/state', 'GET'),
-        callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET')
-      ]);
+    function summarize(op, state) {
+      const status = state?.lastStatus || {};
+      const parts = [];
+      const services = (status.deployedSharedServices?.length || 0) + (status.deployedCoreServices?.length || 0);
+      if (services) parts.push(plural(services, 'service déployé', 'services déployés'));
+      const modules = status.deployedPlugins?.length || 0;
+      if (modules) parts.push(plural(modules, 'module redéployé', 'modules redéployés'));
+      const errors = (status.operationErrors?.length || 0) + (state?.lastError ? 1 : 0);
+      if (!parts.length) parts.push('Rien à déployer.');
+      let detail = parts.join(', ') + (parts[0].endsWith('.') ? '' : '.');
+      if (errors) detail += ` Il reste ${plural(errors, 'erreur', 'erreurs')} à traiter.`;
+      return {
+        kind: errors ? 'warn' : 'ok',
+        title: op.doneTitle,
+        detail,
+        error: state?.lastError || status.operationErrors?.[0] || null
+      };
     }
 
-    function renderState(state, routeDiagnostics) {
+    // ---------- rendu ----------
+    function render() {
+      const tabs = document.getElementById('tabs');
+      tabs.replaceChildren(...TABS.map(t => h('a', {
+        class: 'rl' + (t.id === app.tab ? ' on' : ''),
+        href: '#' + t.id,
+        'aria-label': t.label,
+        'aria-current': t.id === app.tab ? 'page' : false
+      }, icon(t.id), h('span', { class: 'tip' }, t.label))));
+
+      const main = document.getElementById('main');
+      const view = app.tab === 'routage' ? renderRoutes()
+        : app.tab === 'deploiements' ? renderDeployments()
+        : renderEssential();
+      main.replaceChildren(...view);
+    }
+
+    function pageHeader(subtitle, right) {
+      return h('header', { class: 'top' },
+        h('div', {},
+          h('div', { class: 'brand' }, h('b', {}, 'MaNoir'), h('span', { class: 'muted' }, 'administration technique')),
+          h('h1', {}, 'Plateforme'),
+          h('p', { class: 'lede' }, subtitle)),
+        right || null);
+    }
+
+    function globalState(status) {
+      if (!status) return { cls: 'idle', text: 'Chargement…' };
+      if (!status.isDockerAvailable) return { cls: 'bad', text: 'Docker indisponible' };
+      if (status.hasMinimumVital) return { cls: 'ok', text: 'Essentiel prêt' };
+      return { cls: 'warn', text: 'Il manque des éléments' };
+    }
+
+    function renderEssential() {
+      const state = app.state;
       const status = state?.lastStatus;
+      const g = globalState(status);
       const dockerOk = !!status?.isDockerAvailable;
-      const envOk = (status?.environmentErrors?.length || 0) === 0;
-      const vitalOk = !!status?.hasMinimumVital;
+      const disabled = !!app.busy || !state;
+      const envIssues = status?.environmentIssues || status?.environmentErrors || [];
 
-      runtimeDot.className = 'dot ' + (vitalOk ? 'ok' : dockerOk ? '' : 'bad');
-      runtimeText.textContent = vitalOk
-        ? 'Minimum vital prêt'
-        : dockerOk
-          ? 'Gaia surveille un runtime incomplet'
-          : 'Docker indisponible';
+      const inspected = formatTime(state?.lastInspectionUtc);
+      const ensured = formatTime(state?.lastEnsureUtc);
+      const stamp = h('div', { class: 'stamp' },
+        h('span', { class: 'state ' + (app.busy ? 'idle' : g.cls) }, h('i'), app.busy ? 'Opération en cours' : g.text),
+        h('small', {}, `Vérifié ${inspected ? 'à ' + inspected : 'jamais'} · essentiel ${ensured ? 'assuré à ' + ensured : 'jamais assuré'}`),
+        h('span', { class: 'mono muted' }, state?.options?.sharedServicesRootPath || '(chemin par défaut)'));
 
-      lastInspection.textContent = formatDate(state?.lastInspectionUtc);
-      lastEnsure.textContent = formatDate(state?.lastEnsureUtc);
-      sharedRoot.textContent = state?.options?.sharedServicesRootPath || '(par défaut)';
+      const out = [pageHeader('Gaïa veille sur les services techniques de la maison', stamp)];
 
-      dockerState.textContent = dockerOk ? 'Accessible' : 'Indisponible';
-      dockerVersion.textContent = status?.dockerServerVersion || status?.dockerError || '-';
-      environmentState.textContent = envOk ? 'Prêt' : 'Incomplet';
-
-      environmentErrors.innerHTML = '';
-      if (!status?.environmentErrors?.length) {
-        environmentErrors.innerHTML = '<li class="empty">Aucune erreur d\'environnement détectée.</li>';
-      } else {
-        status.environmentErrors.forEach(error => {
-          const item = document.createElement('li');
-          item.textContent = error;
-          environmentErrors.appendChild(item);
-        });
+      if (app.loadError && !state) {
+        out.push(h('div', { class: 'banner bad', role: 'alert' }, icon('alert', 28),
+          h('div', { class: 'body' }, h('b', {}, 'Gaïa ne répond pas'), h('div', { class: 'detail' }, app.loadError))));
       }
 
-      requiredPlugins.innerHTML = '';
-      const configuredRequiredPlugins = state?.options?.requiredPluginIds || [];
-      if (!configuredRequiredPlugins.length) {
-        requiredPlugins.innerHTML = '<li class="empty">Aucun plugin requis configuré.</li>';
-      } else {
-        const missingRequiredPlugins = new Set(status?.missingRequiredPluginIds || []);
-        configuredRequiredPlugins.forEach(pluginId => {
-          const item = document.createElement('li');
-          item.textContent = missingRequiredPlugins.has(pluginId)
-            ? `${pluginId} — manquant dans le catalogue local d\'installation`
-            : `${pluginId} — disponible`;
-          requiredPlugins.appendChild(item);
-        });
+      // actions
+      const actions = h('div', { class: 'actions' },
+        dockerOk
+          ? h('button', { class: 'btn primary', disabled: disabled, onclick: () => runOperation('ensure') },
+              app.busy && app.busy.title === OPERATIONS.ensure.busyTitle ? 'Remise en route…' : 'Remettre l’essentiel en route')
+          : null,
+        h('button', { class: dockerOk ? 'btn' : 'btn primary', disabled: disabled, onclick: () => runOperation('inspect') }, icon('refresh', 20), 'Vérifier l’état'),
+        dockerOk ? h('button', { class: 'btn link', disabled: disabled, onclick: () => { app.confirm = 'restart'; render(); } }, 'Redémarrer et mettre à jour les modules') : null,
+        dockerOk ? h('button', { class: 'btn danger-link', disabled: disabled, onclick: () => { app.confirm = 'reset'; app.wipeData = false; render(); } }, 'Réinitialiser les services partagés') : null);
+      out.push(actions);
+
+      if (app.confirm === 'restart') out.push(restartConfirm());
+      if (app.confirm === 'reset') out.push(resetConfirm(status));
+
+      if (app.busy) {
+        out.push(h('div', { class: 'banner busy', role: 'status' }, h('span', { class: 'spinner' }),
+          h('div', { class: 'body' }, h('b', {}, app.busy.title), h('div', { class: 'detail' }, app.busy.detail))));
+      } else if (app.result) {
+        out.push(h('div', { class: 'banner ' + app.result.kind, role: app.result.kind === 'bad' ? 'alert' : 'status' },
+          icon(app.result.kind === 'ok' ? 'check' : 'alert', 28),
+          h('div', { class: 'body' },
+            h('b', {}, app.result.title),
+            h('div', { class: 'detail' }, app.result.detail),
+            app.result.error ? h('div', { class: 'detail' }, h('b', { style: 'font-size:15px;display:inline' }, 'Dernière erreur : '), app.result.error) : null)));
+      } else if (!dockerOk && status) {
+        out.push(h('div', { class: 'banner bad', role: 'alert' }, icon('alert', 28),
+          h('div', { class: 'body' }, h('b', {}, 'Docker ne répond pas'),
+            h('div', { class: 'detail' }, 'Gaïa ne peut ni lire ni relancer les services pour l’instant.'))));
       }
 
-      serviceList.innerHTML = '';
-      const groupedServices = [];
-      (status?.coreServices || []).forEach(service => groupedServices.push({ service, group: 'core' }));
-      (status?.sharedServices || []).forEach(service => groupedServices.push({ service, group: 'shared-services' }));
+      // diagnostic
+      if (status) {
+        const envOk = envIssues.length === 0;
+        out.push(h('div', { class: 'row3' },
+          h('div', { class: 'card' }, h('div', { class: 'stat-label' }, 'Docker'),
+            h('div', { class: 'stat-value' + (dockerOk ? '' : ' bad') }, dockerOk ? 'Accessible' : 'Indisponible'),
+            h('div', { class: 'stat-note' }, dockerOk ? 'Le moteur répond' : 'Le moteur ne répond pas')),
+          h('div', { class: 'card' }, h('div', { class: 'stat-label' }, 'Version de Docker'),
+            dockerOk
+              ? h('div', { class: 'stat-value' }, status.dockerServerVersion || '—')
+              : h('div', { class: 'stat-value mono bad' }, status.dockerError || '—'),
+            h('div', { class: 'stat-note' }, dockerOk ? 'Version du moteur' : 'Message renvoyé par Docker')),
+          h('div', { class: 'card' }, h('div', { class: 'stat-label' }, 'Variables d’environnement'),
+            h('div', { class: 'stat-value' }, envOk ? 'Prêtes' : 'Incomplètes'),
+            h('div', { class: 'stat-note' }, envOk ? 'Aucune erreur' : plural(envIssues.length, 'à corriger', 'à corriger')))));
 
-      groupedServices.forEach(({ service, group }) => {
-        const badgeClass = service.isRunning && service.matchesExpectedImage ? 'badge' : service.isPresent ? 'badge warn' : 'badge bad';
-        const badgeText = service.isRunning && service.matchesExpectedImage ? 'OK' : service.isPresent ? 'À converger' : 'Manquant';
+        out.push(servicesCard(status, dockerOk, !!app.busy));
 
-        const card = document.createElement('article');
-        card.className = 'service';
-        const publishedPortsLine = service.publishedPorts?.length
-          ? `<div class="service-meta mono">Ports publiés: ${service.publishedPorts.join(', ')}</div>`
-          : '';
-        card.innerHTML = `
-          <div>
-            <h3>${service.serviceName}</h3>
-            <div class="service-meta mono">Groupe: ${group}</div>
-            <div class="service-meta mono">Container: ${service.containerName}</div>
-            <div class="service-meta mono">Image attendue: ${service.expectedImage}</div>
-            <div class="service-meta mono">Image courante: ${service.currentImage || '-'}</div>
-            ${publishedPortsLine}
-          </div>
-          <div class="${badgeClass}">${badgeText}</div>`;
-        serviceList.appendChild(card);
+        out.push(h('div', { class: 'cols' },
+          h('div', { class: 'stack' },
+            h('section', { class: 'card' }, h('h2', {}, 'Variables requises'),
+              envIssues.length
+                ? h('ul', { class: 'plain' }, envIssues.map(e => h('li', { class: 'bad' }, h('i', { class: 'dot' }), e)))
+                : h('div', { class: 'empty' }, icon('check', 20), 'Aucune erreur détectée')),
+            requiredModulesCard(state, status)),
+          h('div', { class: 'wide' }, lastOperationCard(state, status))));
+      }
+      return out;
+    }
+
+    function restartConfirm() {
+      return h('section', { class: 'confirm soft', role: 'group', 'aria-label': 'Confirmer le redémarrage' },
+        h('h3', {}, 'Redémarrer et mettre à jour les modules ?'),
+        h('div', {}, 'Gaïa récupère les dernières versions puis relance tous les modules. Ils peuvent être indisponibles quelques instants.'),
+        h('div', { class: 'actions', style: 'margin-top:16px' },
+          h('button', { class: 'btn primary', onclick: () => runOperation('restart') }, 'Redémarrer'),
+          h('button', { class: 'btn', onclick: () => { app.confirm = null; render(); } }, 'Annuler')));
+    }
+
+    function resetConfirm(status) {
+      const names = (status?.sharedServices || []).map(s => s.serviceName).filter(Boolean);
+      const list = [];
+      names.forEach((n, i) => {
+        list.push(h('b', { class: 'mono', style: 'font-weight:500' }, n));
+        if (i < names.length - 2) list.push(', ');
+        else if (i === names.length - 2) list.push(' et ');
       });
+      const checkbox = h('input', { type: 'checkbox', id: 'wipe', onchange: e => { app.wipeData = e.target.checked; } });
+      checkbox.checked = app.wipeData;
+      return h('section', { class: 'confirm', role: 'group', 'aria-label': 'Confirmer la réinitialisation' },
+        h('h3', {}, 'Réinitialiser les services partagés ?'),
+        h('div', {}, 'Gaïa va supprimer les conteneurs ', list.length ? list : 'des services partagés', ', puis les redéployer. Les modules sont coupés pendant ce temps.'),
+        h('label', { for: 'wipe' }, checkbox,
+          h('span', {}, h('b', { style: 'font-weight:500' }, 'Supprimer aussi les données'),
+            h('span', { class: 'why' }, 'Efface les volumes Docker : bases, messages et files seront vides. Impossible à annuler.'))),
+        h('div', { class: 'actions' },
+          h('button', { class: 'btn danger', onclick: () => runOperation('reset') }, 'Réinitialiser'),
+          h('button', { class: 'btn', onclick: () => { app.confirm = null; render(); } }, 'Annuler')));
+    }
 
-      routeList.innerHTML = '';
-      if (!routeDiagnostics?.length) {
-        routeList.innerHTML = '<div class="empty">Aucune route AdminUi calculée pour l’instant.</div>';
-      } else {
-        routeDiagnostics.forEach(route => {
-          const isError = !!route.error;
-          const badgeClass = isError ? 'badge bad' : route.localUrl ? 'badge' : 'badge warn';
-          const badgeText = isError ? 'Erreur' : route.localUrl ? 'Routable' : 'Calculé';
-          const card = document.createElement('article');
-          card.className = 'service';
-          card.innerHTML = isError
-            ? `<div><h3>${route.repositoryRootPath || 'Plugin'}</h3><div class="service-meta mono">Erreur: ${route.error}</div></div><div class="${badgeClass}">${badgeText}</div>`
-            : `<div>
-                <h3>${route.pluginDisplayName || route.pluginId}</h3>
-                <div class="service-meta mono">Plugin: ${route.pluginId}</div>
-                <div class="service-meta mono">Path prefix: ${route.publicBasePath}</div>
-                <div class="service-meta mono">Service compose: ${route.composeServiceName}</div>
-                <div class="service-meta mono">Port container: ${route.servicePort}</div>
-                <div class="service-meta mono">Router rule: ${route.routerRule}</div>
-                <div class="service-meta mono">Ressource Traefik: ${route.traefikResourceName}</div>
-                <div class="service-meta mono">URL locale: ${route.localUrl || 'Traefik actif mais port local encore indisponible'}</div>
-              </div><div class="${badgeClass}">${badgeText}</div>`;
-          routeList.appendChild(card);
+    function badgeFor(service) {
+      if (service.isRunning && service.matchesExpectedImage) return h('span', { class: 'badge ok' }, 'OK');
+      if (service.isPresent) return h('span', { class: 'badge warn' }, service.isRunning ? 'À mettre à jour' : 'Arrêté');
+      return h('span', { class: 'badge bad' }, 'Manquant');
+    }
+
+    function servicesCard(status, dockerOk, dim) {
+      const card = h('section', { class: 'card' }, h('h2', {}, 'Services essentiels'));
+      if (!dockerOk) {
+        card.append(h('div', { class: 'empty', style: 'color:var(--late)' }, icon('alert', 26),
+          h('span', { style: 'color:var(--muted)' }, 'Gaïa ne peut pas lire les services tant que Docker ne répond pas. Relancez Docker sur le serveur, puis vérifiez l’état.')));
+        return card;
+      }
+      card.append(h('p', { class: 'muted', style: 'margin:-6px 0 8px' }, 'Ce que Gaïa maintient en marche pour que la maison fonctionne.'));
+      if (dim) card.append(h('p', { class: 'muted', style: 'margin:0 0 8px;font-size:14px' }, 'État avant l’opération en cours.'));
+      const rows = [];
+      const addGroup = (name, items) => {
+        if (!items?.length) return;
+        rows.push(h('tr', { class: 'group' }, h('td', { colspan: 4 }, `${name} · ${plural(items.length, 'service', 'services')}`)));
+        items.forEach(s => {
+          const current = s.currentImage
+            ? h('div', { class: 'mono sub' }, 'en place : ', s.currentImage)
+            : h('div', { class: 'sub', style: 'font-size:14px' }, 'aucune image en place');
+          rows.push(h('tr', { class: 'svc' },
+            h('td', { class: 'svc-name' }, h('b', {}, s.displayName || s.serviceName), h('span', { class: 'mono sub' }, s.serviceName)),
+            h('td', {}, h('div', { class: 'mono' }, s.expectedImage || '—'), current),
+            h('td', { class: 'mono' }, s.publishedPorts?.length ? s.publishedPorts.join(', ') : 'Aucun'),
+            h('td', {}, badgeFor(s))));
         });
+      };
+      addGroup('Cœur', status.coreServices);
+      addGroup('Services partagés', status.sharedServices);
+      if (!rows.length) {
+        card.append(h('div', { class: 'empty' }, 'Aucun service à afficher pour l’instant.'));
+        return card;
       }
-
-      gaiaLog.innerHTML = '';
-      const logLines = [];
-      if (state?.lastError) logLines.push(state.lastError);
-      if (status?.removedSharedServices?.length) logLines.push('Conteneurs supprimés: ' + status.removedSharedServices.join(', '));
-      if (status?.removedDataVolumes?.length) logLines.push('Volumes supprimés: ' + status.removedDataVolumes.join(', '));
-      if (status?.deployedSharedServices?.length) logLines.push('Shared services déployés: ' + status.deployedSharedServices.join(', '));
-      if (status?.deployedCoreServices?.length) logLines.push('Core déployé: ' + status.deployedCoreServices.join(', '));
-      if (status?.deployedPlugins?.length) logLines.push('Plugins redéployés: ' + status.deployedPlugins.join(', '));
-      (status?.operationErrors || []).forEach(error => logLines.push(error));
-      (status?.operationMessages || []).forEach(message => logLines.push(message));
-      if (!logLines.length) logLines.push('Gaia n\'a remonté aucune erreur récente.');
-
-      logLines.forEach(line => {
-        const item = document.createElement('li');
-        item.textContent = line;
-        gaiaLog.appendChild(item);
-      });
+      card.append(h('div', { class: 'table-wrap' }, h('table', {},
+        h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, 'Service'), h('th', { scope: 'col' }, 'Image attendue'), h('th', { scope: 'col' }, 'Ports'), h('th', { scope: 'col' }, 'État'))),
+        h('tbody', {}, rows))));
+      return card;
     }
 
-    async function refreshState() {
-      setBusy(true);
-      try {
-        const [state, routeDiagnostics] = await fetchDashboardData();
-        renderState(state, routeDiagnostics);
-      } catch (error) {
-        gaiaLog.innerHTML = '<li>' + error.message + '</li>';
-      } finally {
-        setBusy(false);
+    function requiredModulesCard(state, status) {
+      const ids = state?.options?.requiredPluginIds || [];
+      const missing = new Set(status?.missingRequiredPluginIds || []);
+      return h('section', { class: 'card' }, h('h2', {}, 'Modules requis'),
+        ids.length
+          ? h('ul', { class: 'plain' }, ids.map(id => h('li', { class: missing.has(id) ? 'bad' : '' },
+              h('span', { style: 'display:inline-flex;color:' + (missing.has(id) ? 'var(--late)' : 'var(--ok)') }, icon(missing.has(id) ? 'alert' : 'check', 22)),
+              h('span', { style: 'flex:1;min-width:0' }, id),
+              h('span', { class: 'sub', style: 'font-size:14px;font-weight:300' }, missing.has(id) ? 'Absent du catalogue local d’installation' : 'Disponible'))))
+          : h('div', { class: 'empty' }, 'Aucun module requis'));
+    }
+
+    function lastOperationCard(state, status) {
+      const lines = [];
+      const code = t => h('span', { class: 'mono' }, t);
+      if (state?.lastError) lines.push({ bad: true, node: [state.lastError] });
+      (status?.operationErrors || []).forEach(e => lines.push({ bad: true, node: [e] }));
+      if (status?.removedSharedServices?.length) lines.push({ node: ['Conteneurs supprimés : ', code(status.removedSharedServices.join(', '))] });
+      if (status?.removedDataVolumes?.length) lines.push({ node: ['Volumes supprimés : ', code(status.removedDataVolumes.join(', '))] });
+      if (status?.deployedSharedServices?.length) lines.push({ node: ['Services partagés déployés : ', code(status.deployedSharedServices.join(', '))] });
+      if (status?.deployedCoreServices?.length) lines.push({ node: ['Cœur déployé : ', code(status.deployedCoreServices.join(', '))] });
+      if (status?.deployedPlugins?.length) lines.push({ node: ['Modules redéployés : ', code(status.deployedPlugins.join(', '))] });
+      (status?.operationMessages || []).forEach(m => lines.push({ node: [m] }));
+      return h('section', { class: 'card' }, h('h2', {}, 'Dernière opération'),
+        lines.length
+          ? h('ul', { class: 'plain' }, lines.map(l => h('li', { class: l.bad ? 'bad' : '' }, h('i', { class: 'dot' }), h('span', { style: 'flex:1;min-width:0' }, l.node))))
+          : h('div', { class: 'empty' }, 'Aucune erreur récente'));
+    }
+
+    function renderRoutes() {
+      const out = [pageHeader('Comment chaque module est joint depuis la console')];
+      if (!app.routes) { out.push(h('div', { class: 'empty' }, app.loadError || 'Chargement…')); return out; }
+      if (!app.routes.length) {
+        out.push(h('div', { class: 'card' }, h('div', { class: 'empty' }, 'Aucune route calculée pour l’instant')));
+        return out;
       }
+      out.push(h('div', { class: 'grid-routes' }, app.routes.map(route => {
+        const isError = !!route.error;
+        const kind = isError ? ['bad', 'Erreur'] : route.localUrl ? ['ok', 'Routable'] : ['warn', 'Calculé'];
+        const name = route.pluginDisplayName || route.pluginId || route.repositoryRootPath || 'Module';
+        const head = h('div', { class: 'route-head' },
+          h('span', { class: 't' }, h('b', {}, name), route.pluginId ? h('span', { class: 'mono sub' }, route.pluginId) : null),
+          h('span', { class: 'badge ' + kind[0] }, kind[1]));
+        if (isError) return h('section', { class: 'card' }, head, h('div', { style: 'color:var(--late)' }, route.error));
+        const m = v => h('span', { class: 'mono' }, v);
+        return h('section', { class: 'card' }, head, h('dl', { class: 'kv' },
+          h('dt', {}, 'Chemin'), h('dd', {}, m(route.publicBasePath || '—')),
+          h('dt', {}, 'Service'), h('dd', {}, m(route.composeServiceName || '—')),
+          h('dt', {}, 'Port du conteneur'), h('dd', {}, m(String(route.servicePort ?? '—'))),
+          h('dt', {}, 'Règle Traefik'), h('dd', {}, m(route.routerRule || '—')),
+          h('dt', {}, 'Ressource Traefik'), h('dd', {}, m(route.traefikResourceName || '—')),
+          h('dt', {}, 'Adresse locale'), h('dd', {}, route.localUrl ? m(route.localUrl) : h('span', { class: 'muted' }, 'Port local pas encore disponible'))));
+      })));
+      return out;
     }
 
-    async function ensureSharedServices() {
-      setBusy(true);
-      try {
-        const state = await callApi('/api/ops/gaia/ensure-minimum-vital', 'POST');
-        const routeDiagnostics = await callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET');
-        renderState(state, routeDiagnostics);
-      } catch (error) {
-        gaiaLog.innerHTML = '<li>' + error.message + '</li>';
-      } finally {
-        setBusy(false);
+    function renderDeployments() {
+      const out = [pageHeader('Ce que chaque module apporte à la console, version après version')];
+      const diffs = app.state?.adminUiDeploymentDiffs || [];
+      const deployments = app.state?.adminUiDeployments || [];
+      if (!app.state) { out.push(h('div', { class: 'empty' }, app.loadError || 'Chargement…')); return out; }
+      if (!diffs.length) {
+        out.push(h('div', { class: 'card' }, h('div', { class: 'empty' }, 'Aucun déploiement enregistré')));
+        return out;
       }
+      const labelOf = (pluginId, contributionId) => {
+        const d = deployments.find(x => x.pluginId === pluginId);
+        const c = d?.contributions?.find(x => x.contributionId === contributionId);
+        return c?.label || null;
+      };
+      out.push(h('div', { class: 'grid-routes' }, diffs.map(diff => {
+        const dep = deployments.find(x => x.pluginId === diff.pluginId);
+        const changed = diff.previousVersion && diff.previousVersion !== diff.currentVersion;
+        const added = diff.addedContributionIds || [];
+        const removed = diff.removedContributionIds || [];
+        const modified = diff.changedContributionIds || [];
+        const same = diff.unchangedContributionIds || [];
+        const item = (sign, cls, id) => h('div', { class: 'change' }, h('span', { class: 'sign ' + cls }, sign),
+          h('span', { class: 'mono' }, id), labelOf(diff.pluginId, id) ? h('span', { class: 'muted', style: 'font-size:14px' }, '— ' + labelOf(diff.pluginId, id)) : null);
+        const chips = [];
+        if (added.length) chips.push(h('span', { class: 'badge ok' }, plural(added.length, 'ajoutée', 'ajoutées')));
+        if (modified.length) chips.push(h('span', { class: 'badge warn' }, plural(modified.length, 'modifiée', 'modifiées')));
+        if (removed.length) chips.push(h('span', { class: 'badge bad' }, plural(removed.length, 'retirée', 'retirées')));
+        if (same.length) chips.push(h('span', { class: 'badge idle' }, plural(same.length, 'inchangée', 'inchangées')));
+        return h('section', { class: 'card' },
+          h('div', { class: 'dep-head' },
+            h('span', { class: 't' }, h('b', {}, dep?.pluginDisplayName || diff.pluginId), h('span', { class: 'mono sub' }, diff.pluginId)),
+            h('span', { class: 'version-line' },
+              changed ? [h('span', { class: 'mono sub', style: 'font-size:15px' }, diff.previousVersion), h('span', { class: 'sub' }, '→')] : null,
+              h('span', { class: 'mono', style: 'font-size:15px;font-weight:500' }, diff.currentVersion || '—'),
+              !changed && diff.previousVersion ? h('span', { class: 'muted', style: 'font-size:14px' }, 'Version inchangée') : null)),
+          h('div', { class: 'chips' }, chips),
+          added.map(id => item('+', 'add', id)),
+          modified.map(id => item('~', 'mod', id)),
+          removed.map(id => item('−', 'del', id)),
+          !added.length && !modified.length && !removed.length
+            ? h('span', { class: 'muted' }, 'Aucun changement depuis la version précédente.') : null);
+      })));
+      return out;
     }
 
-    async function refreshAndRestartAllPlugins() {
-      setBusy(true);
-      try {
-        const state = await callApi('/api/ops/gaia/refresh-and-restart-all-plugins', 'POST');
-        const routeDiagnostics = await callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET');
-        renderState(state, routeDiagnostics);
-      } catch (error) {
-        gaiaLog.innerHTML = '<li>' + error.message + '</li>';
-      } finally {
-        setBusy(false);
-      }
+    // ---------- navigation et démarrage ----------
+    function applyHash() {
+      const id = (location.hash || '#essentiel').slice(1);
+      app.tab = TABS.some(t => t.id === id) ? id : 'essentiel';
+      if (app.tab === 'routage') loadRoutes().then(render);
+      render();
     }
+    window.addEventListener('hashchange', applyHash);
 
-    function showResetWarning() {
-      resetWarning.classList.add('visible');
-      wipeDataCheckbox.checked = false;
-      resetButton.disabled = true;
-    }
-
-    function hideResetWarning() {
-      resetWarning.classList.remove('visible');
-      resetButton.disabled = false;
-    }
-
-    async function confirmReset() {
-      hideResetWarning();
-      setBusy(true);
-      try {
-        const wipeData = wipeDataCheckbox.checked;
-        const state = await callApi('/api/ops/gaia/reset-shared-services', 'POST', { wipeData });
-        const routeDiagnostics = await callApi('/api/ops/gaia/admin-ui-route-diagnostics', 'GET');
-        renderState(state, routeDiagnostics);
-      } catch (error) {
-        gaiaLog.innerHTML = '<li>' + error.message + '</li>';
-      } finally {
-        setBusy(false);
-      }
-    }
-
-    refreshButton.addEventListener('click', refreshState);
-    ensureButton.addEventListener('click', ensureSharedServices);
-    refreshPluginsButton.addEventListener('click', refreshAndRestartAllPlugins);
-    resetButton.addEventListener('click', showResetWarning);
-    confirmResetButton.addEventListener('click', confirmReset);
-    cancelResetButton.addEventListener('click', hideResetWarning);
-    refreshState();
+    applyHash();
+    loadState();
+    setInterval(() => { if (!app.busy && !app.confirm) loadState(); }, 30000);
   </script>
 </body>
 </html>
